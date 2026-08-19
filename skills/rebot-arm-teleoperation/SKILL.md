@@ -9,6 +9,8 @@ description: 配置并启动 reBot Arm（B601-DM / B601-RS）与 reBot Arm 102 L
 
 本技能完成 reBot Arm（B601-DM / B601-RS）与 reBot Arm 102 Leader 示教主臂的 **LeRobot 主从遥操作**：从安装 LeRobot 环境、校准 Follower 从臂与 Leader 主臂，到启动 `lerobot-teleoperate` 实现"人握主臂拖动、从臂实时跟随"，并支持接入相机与调优控制频率。遥操作与数据采集共用同一条硬件链路，本技能是后续采集、训练的基础（见 `rebot-arm-data-collection`）。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户想"用主臂拖动控制从臂"（Leader/Follower 主从遥操作）
@@ -31,7 +33,7 @@ description: 配置并启动 reBot Arm（B601-DM / B601-RS）与 reBot Arm 102 L
 
 > ⚠️ 校准过程中机械臂会**使能运动**：手远离夹爪开口与关节运动范围，机械臂周围 50 cm 内无人员与障碍物。
 
-## 1. 环境安装
+## 1. 环境安装 🤖
 
 > 后续所有流程都必须在 conda 虚拟环境中进行；不要使用虚拟机或 WSL，官方建议 Ubuntu 22.04 物理机。
 
@@ -71,7 +73,7 @@ python3 -c "import torch; print(torch.cuda.is_available())"   # 应输出 True
 
 > 输出 False 说明装成了 CPU 版 PyTorch（pip 安装 lerobot 可能覆盖原有 GPU 版），需按官方教程重装 PyTorch/Torchvision。
 
-## 2. 校准 Follower 从臂
+## 2. 校准 Follower 从臂 🔀/👤
 
 - 校准前确认从臂**已接电源与数据线**。
 - 主臂与从臂的校准文件分别保存在 `~/.cache/huggingface/lerobot/calibration/robots` 与 `~/.cache/huggingface/lerobot/calibration/teleoperators` 下；**重新校准需删除对应文件**，或运行校准指令后按提示 **C（重新校准）/ Enter（沿用旧校准）**。
@@ -80,7 +82,7 @@ python3 -c "import torch; print(torch.cuda.is_available())"   # 应输出 True
 
 > 如果无法连接 follower，请先用 motorbridge 提供的接口测试机械臂是否正常（见 `rebot-arm-environment-setup`）。
 
-### 2.1 DM 从臂校准
+### 2.1 DM 从臂校准 🔀/👤
 
 ```bash
 sudo chmod 666 /dev/ttyACM*
@@ -92,7 +94,7 @@ lerobot-calibrate \
     --robot.can_adapter=damiao
 ```
 
-### 2.2 RS 从臂校准
+### 2.2 RS 从臂校准 🔀/👤
 
 ```bash
 sudo ip link set can0 down 2>/dev/null
@@ -117,7 +119,7 @@ done
 
 > 若 Jetson 未安装 PCAN 驱动，通信会持续异常，请先按 `rebot-arm-environment-setup` 完成 PCAN netdev 模式驱动安装。
 
-## 3. 校准 Leader 主臂（reBot Arm 102）
+## 3. 校准 Leader 主臂（reBot Arm 102）🔀/👤
 
 **校准说明**：
 
@@ -143,11 +145,13 @@ lerobot-calibrate \
     --teleop.id=rebot_arm_102_leader
 ```
 
-## 4. 启动主从遥操作
+> 状态记忆：Follower/Leader 校准完成后更新 memory/local-machine-env.md（见 AGENTS.md 第 3 节）。
+
+## 4. 启动主从遥操作 🔀/🤖
 
 > ⚠️ 所有机械臂运动场景同样需要注意：运行中若主从臂电源脱落、电源接触不良、信号线脱落，必须先停止代码，机械臂恢复到初始 0 点位置，再通上电源重新运行程序。
 
-### 4.1 DM 遥操作
+### 4.1 DM 遥操作 🔀/🤖
 
 ```bash
 sudo chmod 666 /dev/ttyUSB* /dev/ttyACM*   # leader + follower 串口权限
@@ -162,7 +166,7 @@ lerobot-teleoperate \
     --teleop.id=rebot_arm_102_leader
 ```
 
-### 4.2 RS 遥操作
+### 4.2 RS 遥操作 🔀/🤖
 
 ```bash
 sudo chmod 666 /dev/ttyUSB*                 # leader 串口权限
@@ -191,7 +195,7 @@ lerobot-teleoperate \
 | `--teleop.port` | 主臂串口 | `/dev/ttyUSB0` | 同左 |
 | `--robot.id` / `--teleop.id` | 校准 ID | 与校准时一致（`follower1` / `rebot_arm_102_leader`） | 同左 |
 
-## 5. 接入相机
+## 5. 接入相机 🤖/👤
 
 先用 `lerobot-find-cameras opencv` 确认相机索引（输出 "Detected Cameras" 与每台相机编号/ID），再在 teleoperate 命令中加入 `--robot.cameras`。
 
@@ -218,14 +222,14 @@ lerobot-teleoperate \
 
 > 提示：`fourcc: "MJPG"` 为压缩格式，可支持更高分辨率；YUYV 格式会降低分辨率与 FPS 导致操作卡顿。`index_or_path` 取相机 ID 的最后一位数字。**USB 相机建议直插电脑，不要经同一 USB HUB 接两台相机**。
 
-## 6. 控制频率与延迟
+## 6. 控制频率与延迟 🤖/👤
 
 - 遥操作回路默认 **60 Hz**——每秒 60 圈"读 Leader → 映射 → 发 CAN → 回读"，每圈时间预算 **16.7 ms**；可通过 teleoperate 配置中的 `fps` 参数调整。
 - **上限由硬件回路耗时决定**：链路跑一圈本身就要十几毫秒，实用上限约 **60–100 Hz**，设得更高实际频率也跑不上去，只会看到周期超时警告。
 - **60 Hz 已远超需要**：人手最快的有意识动作约 **5–10 Hz**，60 Hz 采样密度完全覆盖手的带宽。
 - 若"从臂不跟随/延迟大"：先检查电源与信号线接触（见安全要点），再确认 `fps` 设置与相机格式（YUYV 会拖慢回路）。
 
-## 7. 实操练习建议（抓取→搬运→放置）
+## 7. 实操练习建议（抓取→搬运→放置）👤
 
 遥操作"能动"与"能干活"之间需要刻意练习，按三个梯度：
 
@@ -235,7 +239,15 @@ lerobot-teleoperate \
 | 练习 2 | 完整任务链：抓取 → 搬运 → 放入指定容器 | 连续完成 10 次，起终点姿态基本一致 |
 | 达标标准 | 稳定节奏连续完成完整任务 | **20 次**不觉得勉强，可进入下一章 |
 
-## 常见问题
+## ✅ 验证与预期结果 🤖
+
+| 运行 | 期望结果 | 失败处理 |
+|------|---------|---------|
+| `python3 -c "import torch; print(torch.cuda.is_available())"` | 输出 `True` | 输出 `False` 说明装成 CPU 版 PyTorch，需按官方教程重装 |
+| `lerobot-calibrate`（Follower/Leader） | 校准完成无报错，标定文件出现在 `~/.cache/huggingface/lerobot/calibration/robots` 与 `teleoperators` 下 | 无法连接 follower 先用 motorbridge 测试机械臂；需重新校准时删除标定文件或按提示按 C |
+| `lerobot-teleoperate`（含 `--display_data=true`） | 相机画面正常显示，从臂实时跟随主臂 | 电源/信号线脱落或接触不良→停止代码、回 0 点、上电后重跑；延迟大检查 `fps` 与相机格式 |
+
+## 常见问题 🔀/👤
 
 | 问题 | 原因与解决 |
 |------|-----------|
@@ -253,5 +265,5 @@ lerobot-teleoperate \
 - 官方仓库：<https://github.com/Seeed-Projects/lerobot>
 - pip 插件包：`lerobot-teleoperator-rebot-arm-102` ｜ `lerobot-robot-seeed-b601`
 - motorbridge：<https://github.com/motorbridge/motorbridge>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 11 章"Leader 与 Follower 校准及遥操作"
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 11 章"Leader 与 Follower 校准及遥操作"
 - 前置：`rebot-arm-safety` ｜ `rebot-arm-environment-setup` ｜ 下一步：`rebot-arm-data-collection`

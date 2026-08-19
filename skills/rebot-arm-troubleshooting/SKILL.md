@@ -9,6 +9,8 @@ description: reBot Arm（B601-DM / B601-RS）故障排查总入口：先做安�
 
 本技能是**所有故障排查的入口**：先判断是否紧急（涉及人身/设备安全 → 立即断电），再按症状表定位问题方向，然后进入对应技能的详细排查流程。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 0. 紧急判断（第一步永远是安全）
 
 > 🔴 出现以下情况**立即断电**（拔电源/按电源开关），不要先"按停程序"：
@@ -73,13 +75,21 @@ description: reBot Arm（B601-DM / B601-RS）故障排查总入口：先做安�
 ## 7. 排查方法论（AI 助手引导用户时）
 
 1. **先复现**：让用户描述触发条件、完整报错文本、操作步骤。
-2. **查日志**：终端输出、ROS2 topic echo、训练日志（loss/grdn/eta 字段）。
+2. **查日志**（🤖）：终端输出、`ros2 topic echo`、训练日志（loss/grdn/eta 字段）等终端诊断命令，AI 可直接执行。
 3. **最小化**：一次只改一个变量（先环境后数据后参数）。
-4. **分级处理**：环境类问题先重装/重配；数据类问题补数据；参数类问题调参。
+4. **分级处理**：环境类问题先重装/重配（涉及 sudo 需用户确认，🔀）；数据类问题补数据（需用户录制示范，👤）；参数类问题调参（🤖）。
 5. **不编造**：不确定的报错先搜官方 Wiki FAQ / GitHub Issues，或建议联系官方支持。
+
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|------|---------|---------|
+| 修复后机械臂低速小范围试跑（真机） | 运动正常，无异常抖动/异响 | 立即断电，回到对应小节继续排查 |
+| `ros2 topic echo /rebotarm/arm_status`（ROS2 场景） | 持续输出状态消息、无报错 | 检查 reBotArmController 是否启动且电机已使能 |
+| 训练后推理试跑（训练类问题） | 动作符合示范、无乱动 | 回到第 5 节补数据或调参 |
 
 ## 参考
 
 - 官方 Wiki：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
-- 配套教程：本仓库同目录教程（各章 FAQ 汇总）
+- 配套教程：本地参考教程（未随本仓库发布）（各章 FAQ 汇总）
 - 子技能：rebot-arm-safety（安全）｜ rebot-arm-environment-setup ｜ rebot-arm-motor-config ｜ rebot-arm-motor-control ｜ rebot-arm-python-sdk ｜ rebot-arm-teleoperation ｜ rebot-arm-data-collection ｜ rebot-arm-act-training ｜ rebot-arm-vla-gr00t ｜ rebot-arm-vision-grasping ｜ rebot-arm-ros2 ｜ rebot-arm-moveit ｜ rebot-arm-simulation

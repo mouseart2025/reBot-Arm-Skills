@@ -9,6 +9,8 @@ description: 在仿真环境中使用 reBot Arm（B601-DM / B601-RS）：MuJoCo�
 
 本技能覆盖 reBot Arm（B601-DM / B601-RS）的三种仿真玩法：在 **MuJoCo** 中跑 MJCF 模型（轻量、快，适合运动学/轨迹/控制算法验证）、在 **Isaac Sim** 中导入 USD 并做 Articulation 控制（完整物理/传感器/场景，适合数字孪生）、以及把**真实机械臂状态实时同步到仿真**（Real-to-Sim，数字孪生/示教复现）。仿真不需要真机也能完整跑通（工作空间自带 mock 硬件接口，如 `start_fake_bringup.sh`）。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户说"先在仿真里跑机械臂 / 不想接真机 / 先验证算法"
@@ -52,7 +54,7 @@ description: 在仿真环境中使用 reBot Arm（B601-DM / B601-RS）：MuJoCo�
 
 ## MuJoCo 仿真
 
-### 1. 安装与验证
+### 1. 安装与验证 🤖
 
 ```bash
 # 方式一：使用工作空间自带 venv（推荐，自动加载 ROS2 + PYTHONPATH）
@@ -70,7 +72,7 @@ pip3 install mujoco
 python3 -c "import mujoco; print(mujoco.__version__)"
 ```
 
-### 2. MJCF 模型结构
+### 2. MJCF 模型结构 🤖
 
 | 顶层元素 | 作用 | reBot Arm 中的体现 |
 |---|---|---|
@@ -85,7 +87,7 @@ python3 -c "import mujoco; print(mujoco.__version__)"
 
 关节范围（DM，URDF/MJCF 一致；RS 以 `rs_arm.xml`/URDF 为准，如 joint2/joint3 为 `0~3.14`）：joint1 `-2.8~2.8`、joint2 `-3.14~0`、joint3 `-3.14~0`、joint4 `-1.87~1.57`、joint5 `-1.57~1.57`、joint6 `-3.14~3.14`（单位 rad）。
 
-### 3. 编译 ROS2 包并启动 sim
+### 3. 编译 ROS2 包并启动 sim 🤖
 
 ```bash
 # 编译（RS / DM 二选一）
@@ -113,7 +115,7 @@ ros2 launch rebotarm_mujoco real2sim.launch.py
 # 或直接调用脚本：~/reBot_Arm_Mujoco-DM/reBotArmController_ROS2-main/scripts/start_rebot_mujoco_all.sh
 ```
 
-### 4. 关节滑块 GUI 控制
+### 4. 关节滑块 GUI 控制 👤
 
 先启动 sim（见上），**另开终端**运行 Tkinter 滑块 GUI：
 
@@ -129,7 +131,7 @@ source ~/reBot_Arm_Mujoco-DM/reBotArmController_ROS2-main/install/setup.bash
 ros2 launch rebotarm_mujoco joint_slider_gui.launch.py
 ```
 
-### 5. 运动学与轨迹控制
+### 5. 运动学与轨迹控制 🤖
 
 **关节空间 vs 笛卡尔空间**：关节空间直接给 6 个关节角 `[j1..j6]`（弧度），无需求解、无奇异点；笛卡尔空间给末端 `[x, y, z, qx, qy, qz, qw]`，直观但需要 IK 求解（有奇异点风险）。典型接口：`/rebotarm/follow_joint_trajectory`（关节）与 `/rebotarm/move_to_pose`（笛卡尔）。
 
@@ -152,7 +154,7 @@ rot = data.site_xmat[tcp_id].reshape(3, 3)  # 3x3 旋转矩阵
 
 **轨迹参数**：`command_hz=60`（指令发送）、`max_joint_speed=1.4 rad/s`（约 80 deg/s 速度上限，`duration` 必须留足余量：最短时间 = max(|q1-q0| / 速度上限)）、`record_hz=30`。控制层级：物理控制环 500 Hz（`mujoco_physics_grasp`，PD 力矩）→ 轨迹控制环 60 Hz（`sim_task_server`，位置目标）→ 状态发布环 30 Hz（`real2sim_sync`）→ 录制采样环 30 Hz。
 
-### 6. 四个 Demo（第 37 章）
+### 6. 四个 Demo（第 37 章） 🤖/👤
 
 | Demo | 目标 | 运行方式 |
 |---|---|---|
@@ -173,7 +175,7 @@ source scripts/source_rebotarm_env.sh
 python3 demo4_pick_place.py
 ```
 
-### 7. kinematic 模式 vs physics 模式
+### 7. kinematic 模式 vs physics 模式 🤖
 
 | 模式 | 实现 | 特点 |
 |---|---|---|
@@ -184,11 +186,11 @@ python3 demo4_pick_place.py
 
 ## Isaac Sim 仿真
 
-### 1. 安装与启动
+### 1. 安装与启动 🤖
 
 Isaac Sim 基于 NVIDIA Omniverse，需 RTX GPU。桌面应用从 NVIDIA 官网下载；Python 脚本方式（Isaac Sim 4.x+）：`./python.sh my_script.py`。所有功能通过 Python API（`omni.isaac.*` / `isaacsim.*`）暴露，GUI 操作与脚本操作等价。
 
-### 2. USD 模型基础
+### 2. USD 模型基础 🤖
 
 | 特性 | URDF | USD |
 |---|---|---|
@@ -200,7 +202,7 @@ Isaac Sim 基于 NVIDIA Omniverse，需 RTX GPU。桌面应用从 NVIDIA 官网�
 
 reBot Arm 运动链（RS URDF）：`base_link → joint1..joint6（revolute）→ gripper_end（fixed）→ gripper_joint1/gripper_joint2（prismatic）`。六个旋转关节加两个棱柱关节驱动左右夹爪。
 
-### 3. URDF Importer 导入 reBot Arm
+### 3. URDF Importer 导入 reBot Arm 👤/🤖
 
 菜单路径 `Isaac Utils → Workflows → URDF Importer`，或 Python API：
 
@@ -219,7 +221,7 @@ _urdf.import_urdf(urdf_path, output_usd_path, config)
 
 导入后检查结构：Stage Tree 中 revolute→`PhysicsRevoluteJoint`、prismatic→`PhysicsPrismaticJoint`、fixed→`PhysicsFixedJoint`；碰撞体用 `UsdPhysics.CollisionAPI` 标注、渲染网格是 `UsdGeom.Mesh`（挂 CollisionAPI 的 mesh 才参与物理）。URDF 网格在 `meshes_rs/` 目录，导入器自动解析 `package://rebotarm_bringup/description/meshes_rs/` 前缀，失败时检查 `ROS_PACKAGE_PATH`。
 
-### 4. Articulation Root 与关节 Drive
+### 4. Articulation Root 与关节 Drive 🤖
 
 **Articulation Root**（MuJoCo 没有对应物）：告诉 PhysX 整条运动链用 Featherstone 算法统一求解，而不是独立约束。必须加在**运动链根 link（base_link）**上，放错位置会截断运动链：
 
@@ -254,7 +256,7 @@ drive.GetMaxForceAttr().Set(36.0)                   # 力矩上限
 
 调参原则：先低值确保不振荡，逐步提高刚度，再提阻尼消除残余振荡。**夹爪联动**：Isaac Sim 用 Mimic Joint（MuJoCo 用 `<equality>` 约束）；当前 RS URDF 无 `<mimic>` 标签，需手动配置（`MimicAPI.Apply(left_joint)`，multiplier=1.43，即 `0.0715/0.05`），或在控制代码里按行程比例软件联动。
 
-### 5. Python 控制：Articulation API 与 4 个 Demo
+### 5. Python 控制：Articulation API 与 4 个 Demo 🤖/👤
 
 ```python
 from isaacsim.core.api import World
@@ -275,7 +277,7 @@ robot = Articulation(prim_path="/rebotarm_rs"); world.reset()
 
 ## Real-to-Sim：真实机械臂与仿真机械臂同步（第 39 章，重点）
 
-### 1. 思路与数据流
+### 1. 思路与数据流 🤖
 
 真机发布关节状态 → 仿真跟随复现。核心链路（RS 工程）：
 
@@ -285,7 +287,7 @@ robot = Articulation(prim_path="/rebotarm_rs"); world.reset()
 → MuJoCo Sync 节点订阅 → MuJoCo qpos 更新 → 虚拟机械臂运动
 ```
 
-### 2. 三处关节定义映射
+### 2. 三处关节定义映射 🤖
 
 真机 SDK 配置、MuJoCo 模型、同步节点**三处的关节名称/顺序必须一致**：
 
@@ -302,7 +304,7 @@ for index, name in enumerate(_ARM_JOINTS):
         self.target_arm[index] = float(values[name])
 ```
 
-### 3. DM / RS 单位转换
+### 3. DM / RS 单位转换 🤖
 
 **臂关节**：DM 和 RS 都是弧度，MuJoCo 也是弧度（`<compiler angle="radian"/>`），**无需转换**。
 
@@ -319,7 +321,7 @@ for index, name in enumerate(_ARM_JOINTS):
 
 DM 夹爪硬件电机位置为 **-5.0（全开）~ 0（全闭）rad**，对应仿真夹爪关节 **0.045（单侧全开）~ 0（全闭）**（教程第 34 章 MoveIt 章节的仿真值/硬件值对照表，两套参数不同，真机执行前需确认 `hardware_open_gripper_position` / `hardware_closed_gripper_position`，默认开 `-5.0`、闭 `0.0`）。
 
-### 4. 通信选型：ROS2 vs UDP
+### 4. 通信选型：ROS2 vs UDP 🤖
 
 | 特性 | ROS2 话题 | UDP |
 |---|---|---|
@@ -335,7 +337,7 @@ DM 夹爪硬件电机位置为 **-5.0（全开）~ 0（全闭）rad**，对应�
 
 命名空间隔离：真机 `/rebotarm`（`scripts/start_rs_hardware.sh`）；Fake Driver + MuJoCo `/rebotarm_rs`（`scripts/start_rs_sim.sh`）；MuJoCo 跟随真机 `/rebotarm`（`scripts/start_rs_mujoco_follow.sh`）。`rs_env.sh` 将 DDS 发现范围限制为本地主机，避免 Wi-Fi 漫游后节点互相找不到：`export ROS_AUTOMATIC_DISCOVERY_RANGE="${REBOTARM_ROS_DISCOVERY_RANGE:-LOCALHOST}"`。
 
-### 5. 状态刷新与延迟
+### 5. 状态刷新与延迟 🤖
 
 频率链（排查卡顿的基础）：RS 真机控制循环 125 Hz（MIT 指令）→ 同步硬件反馈查询 20 Hz（刷新缓存）→ ROS 关节状态发布 60 Hz → MuJoCo 仿真同步 250 Hz → 浏览器接收 MuJoCo 状态 ≤ 25 Hz（rosbridge 订阅节流 40 ms）→ 浏览器绘制约 60 Hz（requestAnimationFrame）。
 
@@ -343,7 +345,7 @@ DM 夹爪硬件电机位置为 **-5.0（全开）~ 0（全闭）rad**，对应�
 
 延迟排查沿链路逐层测量：① 真机反馈层 `ros2 topic hz /rebotarm/joint_states` 是否稳定 60 Hz → ② MuJoCo 同步层 `last_input_time` 是否持续更新 → ③ 网页接收层 rosbridge 节流 → ④ 显示插值层（浏览器 32-120 ms 插值）。
 
-### 6. 同步程序安全设计（重要）
+### 6. 同步程序安全设计（重要） 🔀
 
 | 机制 | 说明 |
 |---|---|
@@ -354,9 +356,9 @@ DM 夹爪硬件电机位置为 **-5.0（全开）~ 0（全闭）rad**，对应�
 
 > ✅ 显示跟随（只订阅 JointState，不发送力矩、不打开 SocketCAN）**无需硬件确认**：MuJoCo wrapper only subscribes to the real JointState topic and never sends torque commands or opens SocketCAN, so no hardware-confirm flag is required.
 
-### 7. 三个 Demo
+### 7. 三个 Demo 🔀/👤
 
-**Demo 1：真机同步到 MuJoCo**
+**Demo 1：真机同步到 MuJoCo 🔀**
 
 ```bash
 # 终端 1：真机控制器（需要硬件确认）
@@ -370,15 +372,23 @@ REBOTARM_RS_HARDWARE_CONFIRM=I_UNDERSTAND_RS_WILL_MOVE ./rebotarm start rs
 
 RS 需先配置 CAN 接口：`sudo ip link set can0 down 2>/dev/null || true && sudo ip link set can0 type can bitrate 1000000 && sudo ip link set can0 up`。此 Demo 安全的原因：MuJoCo 跟随节点是被动观察者，崩溃也不影响真机。
 
-**Demo 2：真机同步到 Isaac Sim**：`真实 reBot Arm → Joint State Reader → UDP/ROS2 → Isaac Sim → 数字机械臂同步`（关节映射/单位转换/安全设计同上，直接迁移到 Isaac Sim 场景）。
+**Demo 2：真机同步到 Isaac Sim 🤖**：`真实 reBot Arm → Joint State Reader → UDP/ROS2 → Isaac Sim → 数字机械臂同步`（关节映射/单位转换/安全设计同上，直接迁移到 Isaac Sim 场景）。
 
-**Demo 3：重力补偿手动示教同步**：网页启动重力补偿 → 真机进入 `GRAVITY_COMP` → 用户手动拖动真臂 → JointState 照常发布 → 虚拟臂实时复现。三终端与 Demo 1 相同，浏览器打开 `http://localhost:3002`。
+**Demo 3：重力补偿手动示教同步 👤**：网页启动重力补偿 → 真机进入 `GRAVITY_COMP` → 用户手动拖动真臂 → JointState 照常发布 → 虚拟臂实时复现。三终端与 Demo 1 相同，浏览器打开 `http://localhost:3002`。
 
 网页操作：命名空间选"RS 真机（`/rebotarm`）"→ ROS WebSocket 填 `ws://localhost:9090` 并连接 → 勾选控制锁 → 使能 → 点击"重力补偿启动"（调用服务 `/rebotarm/gravity_compensation/start`，`std_srvs/Trigger`；另有 `/stop`、`/status`）。
 
 重力补偿原理：从当前姿态 `q_hold` 起步（不回零）→ Pinocchio 计算重力力矩 → smoothstep 0.5 s 内从硬增益 `[80,150,150,50,50,50]`/`[5,10,10,5,4,4]` 渐变到柔顺增益 `kp=2, kd=1` → 125 Hz 循环中目标跟随测量角（`q_target=q`）+ 重力前馈（用 20 Hz 缓存，不做同步 CAN 读）。用户拖到哪臂跟到哪，松手后悬停。
 
 > ⚠️ **重力补偿期间安全规则**：`GRAVITY_COMP` 状态下控制器拒绝所有网页关节命令、TCP 拖拽、轨迹回放和夹爪命令，只有"停止重补"按钮和失能请求能打断。拖动时扶稳机械臂、手远离夹爪，完成示教后点击"重力补偿停止"回到位置保持模式。
+
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|---|---|---|
+| `python3 -c "import mujoco; print(mujoco.__version__)"`（🤖） | 输出 3.x（如 3.2.0） | 报 `ModuleNotFoundError`：未安装或 venv 未 source，重跑安装或 source 环境脚本 |
+| `ros2 launch rebotarm_mujoco_rs mujoco_rs.launch.py use_viewer:=true`（🤖，观察 viewer 👤） | MuJoCo viewer 显示机械臂模型 | 黑屏/崩溃：`export MUJOCO_GL=egl`（无显示器）或 `glfw`/`osmesa` |
+| Real-to-Sim 三终端：真机控制器（🔀）+ `./scripts/start_rs_mujoco_follow.sh`（🤖）+ `./rebotarm start web`（👤） | 真机运动时虚拟臂实时复现，网页可观察镜像 | 不跟手/延迟大：按频率链排查 `ros2 topic hz /rebotarm/joint_states`、`stale_timeout`、rosbridge 节流 |
 
 ## 常见问题
 
@@ -396,5 +406,5 @@ RS 需先配置 CAN 接口：`sudo ip link set can0 down 2>/dev/null || true && 
 - 官方 Wiki：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - MuJoCo：<https://mujoco.org/> ｜ Isaac Sim：<https://docs.isaacsim.omniverse.nvidia.com/>
 - GitHub：<https://github.com/Seeed-Projects/reBot-DevArm>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 35 章（仿真基础）、第 36 章（MuJoCo 运行）、第 37 章（运动学与轨迹控制）、第 38 章（Isaac Sim）、第 39 章（Real-to-Sim）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 35 章（仿真基础）、第 36 章（MuJoCo 运行）、第 37 章（运动学与轨迹控制）、第 38 章（Isaac Sim）、第 39 章（Real-to-Sim）
 - 相关技能：`rebot-arm-safety`（真机操作前必读）｜ `rebot-arm-ros2`（Topic/Service 接口）｜ `rebot-arm-troubleshooting`（故障排查）

@@ -9,6 +9,8 @@ description: 为 reBot Arm（B601-DM / B601-RS）采集 LeRobot 模仿学习数�
 
 本技能覆盖从"任务设计"到"录出合格数据集"的完整流程：先定义任务（起点/结束条件、一致性/多样性、成功标准），再配置相机（单/双相机、索引确认），用 `lerobot-record` 录制 Episode，最后用 `lerobot-dataset-viz` 可视化回放并按四条质量标准检查，必要时删除/补录/整集重录。适用于 B601-DM 与 B601-RS。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户要录制示范数据（测试 5 条 / 正式 50 条）、检查数据集质量（回放、可视化、结构）
@@ -32,7 +34,7 @@ description: 为 reBot Arm（B601-DM / B601-RS）采集 LeRobot 模仿学习数�
 3. 停止前把机械臂移回安全位，避免停在半空受力姿态。
 4. 录制中目标物、盒子、相机、机械臂位置与光线保持固定——随便动产生的是噪声，不是多样性。
 
-## 1. 任务设计（第 12 章）：先想清楚再开录
+## 1. 👤 任务设计（第 12 章）：先想清楚再开录
 
 ### 1.1 什么是 Episode，一条数据里有什么
 
@@ -112,7 +114,7 @@ description: 为 reBot Arm（B601-DM / B601-RS）采集 LeRobot 模仿学习数�
 
 **先采 50 条 → 训练 → 真机评估 → 针对失败场景补采 → 再训练**。模型大方向对、只是精度差，补数据有用；模型行为完全不对，说明任务或数据设计有问题，补再多也是浪费。
 
-## 2. 相机配置
+## 2. 🤖👤 相机配置
 
 ### 2.1 单相机与双相机方案
 
@@ -126,7 +128,7 @@ description: 为 reBot Arm（B601-DM / B601-RS）采集 LeRobot 模仿学习数�
 - **俯视相机（front）**：固定支架上俯瞰整个工作区，告诉模型"目标在哪里、机械臂整体处于什么状态"
 - **腕部相机**：装在机械臂末端跟着夹爪走，告诉模型"夹爪和目标的相对位置、该不该闭合"
 
-### 2.2 查找相机索引：lerobot-find-cameras
+### 2.2 🤖👤 查找相机索引：lerobot-find-cameras
 
 ```bash
 lerobot-find-cameras opencv
@@ -148,7 +150,7 @@ lerobot-find-cameras opencv
 - **帧率 30**：与采集帧率一致（否则记录时反复用旧帧充数）
 - **`fourcc: "MJPG"`**：图像压缩后再传输，USB 带宽压力小一个量级；`YUYV` 会导致分辨率/FPS 降低、机械臂运行卡顿。MJPG 下可支持 3 个摄像头 1920×1080 @ 30 FPS
 
-## 3. 创建数据集并录制（lerobot-record）
+## 3. 🤖👤 创建数据集并录制（lerobot-record）
 
 > 输出命令前应随时准备录制：启动后会有声音提示进入录制阶段，若无声音可看终端提示。
 
@@ -218,7 +220,7 @@ lerobot-record \
 
 例如 `--dataset.repo_id=seeed_rebot_b601_dm/test` 会在 `~/.cache/huggingface/lerobot/` 下创建 `seeed_rebot_b601_dm/test` 文件夹。
 
-### 3.4 录制、暂停和重新录制（键盘控制）
+### 3.4 👤 录制、暂停和重新录制（键盘控制）
 
 | 按键 | 作用 |
 |---|---|
@@ -235,7 +237,9 @@ lerobot-record \
 2. **回放检查**：用第 4 节命令回放测试集，确认没问题。
 3. **正式采集**：`repo_id` 换正式名、`num_episodes=50`，按**铅笔五点定位法**执行——每点 1 条、5 点一轮、共 10 轮。
 
-## 4. 可视化与回放
+> 状态记忆：数据集录制完成后更新 memory/local-machine-env.md 的「数据集」表（见 AGENTS.md 第 3 节）。
+
+## 4. 🤖 可视化与回放
 
 **可视化数据集**（未上传 Hub、本地可视化，`repo_id` 用采集时自定义的名字）：
 
@@ -271,7 +275,7 @@ lerobot-replay \
 
 > RS 仅替换三个参数：`--robot.type=seeed_b601_rs_follower`、`--robot.port=can0`、`--robot.can_adapter=socketcan`（`repo_id` 相应换为 `seeed_rebot_b601_rs/test`）。此时机器人应做出与遥操作记录时一样的动作。
 
-## 5. 数据集结构与质量检查（第 14 章）
+## 5. 🤖 数据集结构与质量检查（第 14 章）
 
 ### 5.1 数据集在硬盘上的结构
 
@@ -311,7 +315,7 @@ lerobot-replay \
 
 可视化用 `lerobot-dataset-viz`，真机回放用 `lerobot-replay`（见第 4 节）。建议至少回放**第 0 条、中间一条、最后一条**：第一条看流程对不对，中间看状态有没有漂移，最后一条最容易暴露疲劳期的质量下滑。
 
-### 5.4 发现问题怎么办：删除、补录还是整集重录
+### 5.4 🤖 发现问题怎么办：删除、补录还是整集重录
 
 - **个位数坏条**（如第 3、17 条画面糊了）→ 删掉对应 2 条，再补录 2 条
 - **成片问题**（一半条数光照变了、整批音画错位）→ 别修，**整集重录**。修出来的数据集七拼八凑，比数据少更伤模型
@@ -329,7 +333,14 @@ lerobot-edit-dataset \
 
 > 删除后工具会自动**重建**数据集——episode 重新连续编号、`stats.json` 重新计算，不必手动修任何东西；无论删还是补，工具都会重新生成一遍 meta。若要从头开始记录，**手动删除数据集目录**即可。
 
-## 6. 常见问题
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|---|---|---|
+| `lerobot-record` 录完 5/50 条后按 ESC 结束 | `~/.cache/huggingface/lerobot/<repo_id>/` 下出现 `data/`、`videos/`、`meta/` 目录（如 `seeed_rebot_b601_dm/test`），终端完成编码视频与统计量计算 | 数据集不完整或异常退出 → 按 ESC 正常收尾；用 `--resume=true` 补录，或手动删除数据集目录后整集重录 |
+| `lerobot-dataset-viz --repo-id <repo_id> --episode-index 0 --display-compressed-images=false` | 回放第 0 条：两路画面清晰、动作与画面同步、开头标准起始姿态、结尾达成结束条件 | 黑屏/花屏/一路静止 → 检查相机直插与索引（重跑 `lerobot-find-cameras`）；坏条用 `lerobot-edit-dataset` 删除后补录 |
+
+## 6. 🤖👤 常见问题
 
 | 现象 | 原因与处理 |
 |---|---|
@@ -344,6 +355,6 @@ lerobot-edit-dataset \
 
 - 官方 Wiki（Dataset Collection / Visualize the Dataset / Replay an Episode 章节）：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - 官方仓库：<https://github.com/Seeed-Projects/lerobot>
-- 配套教程（本仓库同目录）：第 12 章《机器人数据集与任务设计》、第 13 章《相机配置与 LeRobot 数据采集》、第 14 章《数据集结构与质量检查》
+- 配套教程（本地参考，未随本仓库发布）：第 12 章《机器人数据集与任务设计》、第 13 章《相机配置与 LeRobot 数据采集》、第 14 章《数据集结构与质量检查》
 - 相关技能：安全 → `rebot-arm-safety`；遥操作 → `rebot-arm-teleoperation`；环境 → `rebot-arm-environment-setup`
 - 下一步：训练 ACT 模型 → `rebot-arm-act-training`

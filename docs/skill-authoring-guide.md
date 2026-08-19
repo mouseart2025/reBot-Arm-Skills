@@ -44,8 +44,23 @@ description: 当用户需要配置或使用 reBot Arm 的 ROS2 接口（launch �
 4. **安全要点**：真机操作类技能必须给出安全提醒，并提示先读 `rebot-arm-safety`。
 5. **步骤**：分步骤、可执行的指引；命令用代码块；参数用表格说明。
 6. **DM 与 RS 差异**：两个型号命令不同处分别给出（如 `--robot.type=seeed_b601_dm_follower` vs `seeed_b601_rs_follower`）。
-7. **常见问题 / 排错**：指向 `rebot-arm-troubleshooting` 或内联 FAQ。
-8. **参考**：官方 Wiki、GitHub、教程章节链接。
+7. **✅ 验证与预期结果**：每个实操技能必须包含，说明"运行什么 → 期望看到什么 → 失败怎么办"（1~3 条）。
+8. **常见问题 / 排错**：指向 `rebot-arm-troubleshooting` 或内联 FAQ。
+9. **参考**：官方 Wiki、GitHub、教程章节链接。
+
+### 3.1 执行分工标记（AI 使用本技能时如何分工）
+
+每个技能必须让 AI 明确"哪一步它能自己跑、哪一步必须交给用户"。在**步骤标题或步骤正文**前使用以下前缀标记，并在"简介"后加一行图例：
+
+- `🤖 AI 执行` — 可在终端直接运行/自动化的命令（非交互、不需要密码）。例：`sudo chmod 666 /dev/ttyACM*` 之外的非交互命令、`pip install`、`lerobot-find-cameras opencv`。
+- `👤 用户执行` — 必须用户手动完成：GUI/网页操作（DM_Tools、MotorBridge Studio、RViz 拖动）、按键控制（`lerobot-record` 的方向键/ESC、校准按 Enter）、插拔线缆、物理搬动机械臂、观察指示灯。
+- `🔀 人机协作` — AI 执行命令但需要用户配合：需要输入 sudo 密码的命令、需要用户确认硬件状态/安全的操作、交互式 CLI 提示（`lerobot-calibrate` 按 C/Enter）。
+
+> 规则：**凡涉及 `sudo` 或修改系统配置（如 `sudo apt remove brltty`）标 `🔀` 或 `👤`**；凡涉及网页/GUI/按键/物理操作一律标 `👤`。
+
+### 3.2 环境状态记忆（memory）
+
+每个会改变机器状态的技能（环境搭建、电机配置、数据采集等）在执行关键步骤后，应提示 AI 更新 `memory/local-machine-env.md`（如安装完成、标定完成、数据集创建），并在"前置条件"中提示先读该文件判断是否需要重做。见 `AGENTS.md` 的"环境状态记忆"一节。
 
 ## 4. 写作与格式要求
 

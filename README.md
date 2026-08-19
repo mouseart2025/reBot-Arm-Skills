@@ -36,6 +36,25 @@
 | 14 | [skills/rebot-arm-simulation](skills/rebot-arm-simulation/SKILL.md) | 仿真：MuJoCo、Isaac Sim、真实机械臂与仿真同步（Real-to-Sim） |
 | 15 | [skills/rebot-arm-troubleshooting](skills/rebot-arm-troubleshooting/SKILL.md) | 故障排查：诊断树、常见错误与修复、参数调优经验 |
 
+### 端到端工作流（把组件技能串成完整任务）
+
+| 工作流 | 用途 |
+|--------|------|
+| [workflows/first-run.md](workflows/first-run.md) | 新臂初始化：环境 → 接线供电 → 电机 ID → 零点标定 → 首次控制验证 |
+| [workflows/first-imitation-task.md](workflows/first-imitation-task.md) | 首个模仿学习任务：遥操作 → 采集 → 训练 ACT → 真机评估 → 数据迭代 |
+| [workflows/vision-grasping-project.md](workflows/vision-grasping-project.md) | 视觉分拣项目：相机安装 → 手眼标定 → 抓取运行 → 位置补偿调优 |
+
+### 参考文档
+
+| 文档 | 用途 |
+|------|------|
+| [references/os-matrix.md](references/os-matrix.md) | 操作系统（Ubuntu/macOS/Windows/Jetson）× 型号（DM/RS）差异对照 |
+| [references/fault-codes.md](references/fault-codes.md) | ROS2 故障码/状态码的读取与定位方法 |
+
+### 环境状态记忆
+
+[memory/local-machine-env.md](memory/local-machine-env.md) 记录本机环境状态（型号/OS/依赖/端口/标定/数据集/模型），AI 每次会话开始时读取、每完成关键步骤后更新，避免重复初始化（规则见 [AGENTS.md](AGENTS.md) 第 3 节）。
+
 ## 三、如何让 AI 使用这些技能
 
 **方式 A：把技能安装到你的 Agent 技能目录（推荐，随取随用）**
@@ -71,6 +90,9 @@ AI 会依据技能描述自动加载对应技能并逐步执行。**建议在第
 - **安全优先**：任何涉及真机运动的技能都会内嵌"安全要点"提示；所有操作前必须先读 `rebot-arm-safety`。
 - **命令即事实**：所有命令、参数、端口号均来自官方 Wiki 与本仓库配套教程；如与官方文档冲突，以官方文档为准。
 - **可移植性**：每个技能自包含，`SKILL.md` 内联关键表格与命令，尽量不依赖仓库内跨目录文件；详细参考资料通过外部链接给出。
+- **执行分工标记**：每个技能内用 `🤖 AI 执行`（AI 可直接运行）、`👤 用户执行`（GUI/网页/按键/插线/物理操作，必须用户做）、`🔀 人机协作`（如 sudo 需用户密码/确认）标明每步由谁执行，AI 不得越界执行用户侧操作。
+- **环境状态记忆**：AI 会话开始读 `memory/local-machine-env.md`，每完成关键步骤更新，避免重复初始化。
+- **验证与预期结果**：每个实操技能末尾含 `✅ 验证与预期结果`，AI 执行完必须验证成功再继续下一步。
 
 ## 五、常见问题
 

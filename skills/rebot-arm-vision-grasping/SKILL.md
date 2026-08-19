@@ -7,6 +7,7 @@ description: 让 reBot Arm（B601-DM / B601-RS）通过 RGB-D 深度相机实现
 
 ## 简介
 本技能指导 reBot Arm（B601-DM / B601-RS）搭建一套完整的**视觉自主抓取**系统：RGB-D 深度相机观察工作区域 → YOLO 识别目标 → 深度信息定位 → 手眼标定坐标转换 → 机械臂自动抓取与放置。核心代码来自官方仓库 [Seeed-Projects/reBot-DevArm-Grasp](https://github.com/Seeed-Projects/reBot-DevArm-Grasp)（含 `main.py` 主抓取、`set.py` 抓取与放置），并配套本仓库教程第 27/28/29 章的理论与实践。
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
 
 ## 何时使用
 - 用户想让机械臂"**自动识别并抓取物体**"（视觉抓取 / 自主抓取 / 抓取放置）
@@ -61,7 +62,7 @@ X = (u - cx) * Z / fx ； Y = (v - cy) * Z / fy ； Z = Depth
 - **预训练模型**可直接用于快速验证 Demo；对工业零件等特殊目标识别不准时需**定制训练**（数据采集 → Bounding Box 标注 → 训练 `best.pt` → 部署替换）。
 
 ## 2. 相机选型与安装
-### 2.1 相机选型（官方推荐）
+### 2.1 相机选型（官方推荐） 👤
 | 相机 | 特点 | 适用 |
 |------|------|------|
 | **RealSense D405** | 短距离双目深度相机，高精度近距离，典型工作范围 **7 cm – 50 cm** | 桌面级精密抓取 |
@@ -70,7 +71,7 @@ X = (u - cx) * Z / fx ； Y = (v - cy) * Z / fy ； Z = Depth
 
 > 腕部相机支架需自行 **3D 打印**：`D435_Gemini2_Mount.step`、`D405_305_Mount.step`（图纸见配套教程，没有打印机的可联系官方客服）。
 
-### 2.2 接线与权限
+### 2.2 接线与权限 👤/🔀
 1. 深度相机通过 **USB 3.0** 直插主机（避免 USB HUB 引入不稳定）；USB2CAN 适配器连接机械臂 CAN 总线并插入主机 USB 口。
 2. 确认 24V（DM）/ 48V（RS）电源、相机、机械臂连接可靠。
 3. 配置设备权限：
@@ -79,7 +80,7 @@ sudo chmod a+rw /dev/bus/usb/*/*   # 深度相机 USB 权限
 sudo chmod 666 /dev/ttyUSB0        # USB2CAN（端口号按实际调整）
 ```
 
-### 2.3 安装相机 SDK
+### 2.3 安装相机 SDK 🤖/🔀
 **RealSense D435i / D405（依赖 `pyrealsense2`）：**
 ```bash
 pip install pyrealsense2
@@ -105,7 +106,7 @@ sudo bash scripts/install_udev_rules.sh && sudo udevadm control --reload-rules &
 ```
 
 ## 3. 环境安装与配置
-### 3.1 克隆仓库并创建 conda 环境
+### 3.1 克隆仓库并创建 conda 环境 🤖
 ```bash
 git clone https://github.com/Seeed-Projects/reBot-DevArm-Grasp.git rebot_grasp
 cd rebot_grasp
@@ -114,7 +115,7 @@ conda activate rebotarm
 ```
 > 教程提示：如想用其他环境名，将命令中的 `rebotarm` 替换为自定义名称（环境由 `environment.yml` 定义，以仓库为准）。
 
-### 3.2 安装机械臂控制库
+### 3.2 安装机械臂控制库 🤖
 ```bash
 git clone https://github.com/vectorBH6/reBotArm_control_py.git sdk/reBotArm_control_py
 cd sdk/reBotArm_control_py
@@ -132,7 +133,7 @@ include = ["reBotArm_control_py*"]
 ```
 视觉抓取程序会读取该 SDK 配置，自动选择对应的机械臂控制模式与夹爪参数。
 
-### 3.3 配置机械臂型号（DM / RS 差异，重点）
+### 3.3 配置机械臂型号（DM / RS 差异，重点） 🤖/🔀
 在 `rebot_grasp/sdk/reBotArm_control_py/config/rebotarm.yaml` 中修改 `hardware_yaml`：
 ```yaml
 # reBotArm 全局配置（电机类型、通信参数、PID 等）
@@ -152,7 +153,7 @@ sudo ip link set can0 up
 ip -details link show can0
 ```
 
-### 3.4 安装深度相机 SDK
+### 3.4 安装深度相机 SDK 🤖
 按 §2.3 安装对应相机 SDK；若当前环境已能正常导入相机驱动可跳过。
 
 ## 4. 手眼标定（抓取前必做）
@@ -164,7 +165,7 @@ ip -details link show can0
 | **Eye-in-Hand**（本项目使用） | 相机装在机械臂末端 | 相机随臂运动 | 精密抓取、装配 |
 | Eye-to-Hand | 相机固定 | 视野稳定 | 流水线 |
 
-### 4.2 ArUco 标定板
+### 4.2 ArUco 标定板 👤
 - 仓库根目录提供可直接打印的标定板：`aruco100x100.pdf`（100 mm × 100 mm，对应 `marker_length_m: 0.1`）、`arcuo30x30.pdf`。
 - **避免缩印**：打印后用直尺实测，确认 ArUco 标定板实际尺寸为 **100 mm × 100 mm**，否则标定结果整体偏移。
 - 标定流程：固定标定板（Eye-in-Hand 时固定在桌面视野内）→ 机械臂运动多个位置 → 相机拍摄 ArUco → 记录机器人姿态 → 计算转换关系 → 得到标定矩阵。
@@ -181,7 +182,7 @@ calibration:
   hand_eye_method: TSAI
 ```
 
-### 4.4 运行标定程序
+### 4.4 运行标定程序 🤖/👤
 ```bash
 python scripts/collect_handeye_eih.py            # 自动模式
 python scripts/collect_handeye_eih.py --manual   # 手动模式
@@ -190,11 +191,12 @@ python scripts/collect_handeye_eih.py --manual   # 手动模式
 - **手动模式**：机械臂进入重力补偿状态，推到合适视角后按 `Enter` 采集，`c` 或 `q` 结束并计算。
 - 结果保存在 `config/calibration/<camera_type>/`：`intrinsics.npz`（相机内参）、`hand_eye.npz`（手眼标定结果），相机类型目录如 `realsense_d435i`、`realsense_d405`、`orbbec_gemini2`。
 > ⚠️ 标定完成后**相机位置不可移动**（含支架松动），否则标定失效；相机安装误差是抓取失败的主要来源之一。
+> 状态记忆：标定完成后更新 memory/local-machine-env.md（见 AGENTS.md 第 3 节）。
 
 ## 5. 运行抓取程序
 > 运行前：完成 `rebot-arm-safety` 检查清单、§3.3 型号配置正确、§4 标定完成；**第一次运行先空载验证轨迹**。
 
-### 5.1 主抓取程序 `scripts/main.py`
+### 5.1 主抓取程序 `scripts/main.py` 🤖/👤
 ```bash
 python scripts/main.py
 ```
@@ -206,20 +208,20 @@ python scripts/main.py
 5. 按 `G` 冻结帧，经手眼变换计算机械臂目标位姿；
 6. 机械臂移动到预抓取点 → 下降 → 夹爪闭合 → 提升 → 回预备位。
 
-### 5.2 抓取与放置程序 `scripts/set.py`
+### 5.2 抓取与放置程序 `scripts/set.py` 🤖/👤
 ```bash
 python scripts/set.py
 ```
 流程：相机与机械臂初始化并移动到预备点位 → 实时预览 + YOLO 检测与实例分割 → 按 `G` 冻结帧并手眼变换计算目标位姿 → 移动抓取（如香蕉）并抬高 → 放置到盒子内并回归初始姿态 → 按 `Q` 退出系统，机械臂回归零点。
 > 键盘操作：`G` 冻结帧触发抓取，`Q` 退出并回零。代码细节（相机驱动、YOLO 权重、夹爪力控状态机等）以仓库源码为准。
 
-### 5.3 其他辅助脚本
+### 5.3 其他辅助脚本 🤖
 | 脚本 | 用途 |
 |------|------|
 | `scripts/object_detection.py` | 纯 YOLO 检测 Demo，实时显示检测框与置信度，无抓取逻辑 |
 | `scripts/ordinary_grasp_pipeline.py` | 简化抓取测试，不依赖机械臂，仅验证 OBB 抓取姿态估计与可视化 |
 
-## 6. 位置补偿与精度调优
+## 6. 位置补偿与精度调优 🤖/👤
 校准之后抓取精度仍不满足需求时，打开 `config/default.yaml`，修改 `calibration.hand_eye_compensation_m` 的 X（前后）、Y（左右）、Z（高低）参数：
 ```yaml
 calibration:
@@ -245,7 +247,7 @@ calibration:
 ### 7.1 概念
 GraspNet 是基于**点云**的六自由度抓取姿态生成与评估框架：输入 RGB-D → 点云 → GraspNet → 抓取姿态，输出 `G = (x, y, z, roll, pitch, yaw)`：`x,y,z` 为夹爪位置，`roll,pitch,yaw` 为夹爪朝向。相比 YOLO + OBB 二维方案，对抓取姿态估计更准确。
 
-### 7.2 配置 GraspNet
+### 7.2 配置 GraspNet 🤖
 1. 确认 `nvcc` 可用且 CUDA 版本与 PyTorch 编译版本一致：
 ```bash
 nvcc --version
@@ -291,7 +293,7 @@ graspnet:
 ```
 > `checkpoint` 支持三种写法：仅文件名自动从 `sdk/graspnet-baseline/checkpoints/` 查找；相对路径按项目根目录解析；绝对路径直接使用。
 
-### 7.3 运行与调试
+### 7.3 运行与调试 🤖/👤
 ```bash
 python scripts/graspnet_camera_demo.py                # 仅相机估计，不连机械臂
 python scripts/grasp.py --dry-run                     # 只打印目标位姿与候选筛选结果
@@ -299,6 +301,14 @@ python scripts/grasp.py --target-class "light blue coffee cup"
 ```
 - `graspnet_camera_demo.py`：YOLO 检测框选择目标区域，从 GraspNet 全场景候选中筛选目标 bbox 内可行夹取；按 `G`/`Space` 推理、`R` 恢复预览、`Q`/`Esc` 退出，推理后可用 Open3D 查看点云与夹取候选。
 - `grasp.py`：接入机械臂执行流程，经手眼标定转换到基坐标系，检查 IK 可达性后执行预夹取、夹取、退回；**调试时先 `--dry-run`**。
+
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|------|---------|---------|
+| `python -c "import pyrealsense2; ..."` / `python -c "import pyorbbecsdk; ..."`（相机 SDK 验证） | 输出 `pyrealsense2 OK` / `pyorbbecsdk OK` | 检查 USB 3.0 直插与权限（`sudo chmod a+rw /dev/bus/usb/*/*`），重装对应 SDK |
+| `python scripts/collect_handeye_eih.py`（自动模式，样本 ≥15） | 生成 `config/calibration/<camera_type>/hand_eye.npz` 与 `intrinsics.npz`（标定矩阵） | 固定标定板（实测 100 mm × 100 mm 防缩印）、增加标定样本 |
+| `python scripts/main.py` / `python scripts/set.py`（按 `G` 触发） | 识别目标并连续多次抓取成功、位置一致；`set.py` 将物体放置到盒子 | 用 `calibration.hand_eye_compensation_m` 的 x/y/z 补偿；检查 Depth 空洞/噪声 |
 
 ## 常见问题
 - **相机读不到**：检查 USB 3.0 直插与权限（`sudo chmod a+rw /dev/bus/usb/*/*`）；确认 SDK 导入成功（`import pyrealsense2` / `import pyorbbecsdk`）；用 OrbbecViewer / realsense-viewer 验证深度流。
@@ -314,5 +324,5 @@ python scripts/grasp.py --target-class "light blue coffee cup"
 - Orbbec SDK：<https://github.com/orbbec/OrbbecSDK_v2> ｜ pyorbbecsdk：<https://github.com/orbbec/pyorbbecsdk>
 - RealSense SDK：<https://github.com/realsenseai/librealsense>
 - graspnet-baseline：<https://github.com/graspnet/graspnet-baseline> ｜ graspnetAPI：<https://github.com/graspnet/graspnetAPI>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 27 章（机器人视觉与三维感知）、第 28 章（目标检测与手眼标定）、第 29 章（reBot Arm 自主视觉抓取）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 27 章（机器人视觉与三维感知）、第 28 章（目标检测与手眼标定）、第 29 章（reBot Arm 自主视觉抓取）
 - 相关技能：`rebot-arm-safety`（必读）｜ `rebot-arm-environment-setup` ｜ `rebot-arm-motor-config` ｜ `rebot-arm-troubleshooting`

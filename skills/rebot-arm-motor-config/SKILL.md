@@ -1,6 +1,6 @@
 ---
 name: rebot-arm-motor-config
-description: 配置 reBot Arm（B601-DM / B601-RS）的关节电机：写入/校验电机 CAN ID 与 Master ID、零点标定、MotorBridge Studio Web 界面操作、RS 电机参数模板初始化。当用户需要初始化新机械臂、电机失联、设零点、或"电机乱动/参数异常"时使用本技能。
+description: 配置 reBot Arm（B601-DM / B601-RS）的关节电机：初始化新机械臂（写入/校验电机 CAN ID 与 Master ID）、零点标定、MotorBridge Studio Web 界面操作、RS 电机参数模板初始化。当用户需要初始化新机械臂、写电机 ID、设零点、电机失联、或电机乱动/参数异常时使用本技能。
 ---
 
 # reBot Arm 电机 ID 配置与零点标定（MotorBridge 流程）
@@ -8,6 +8,8 @@ description: 配置 reBot Arm（B601-DM / B601-RS）的关节电机：写入/校
 ## 简介
 
 本技能完成 reBot Arm 关节电机的**初始化配置**：为 7 个关节电机写入/校验 CAN ID 与 Master ID、完成零点标定，并按型号完成后续准备（DM 用 DM_Tools / motorbridge Python，RS 用 MotorBridge Studio Web 界面 + 参数模板初始化）。电机 ID 错误会导致电机失联或"电机乱动/参数异常"，本技能也是这类问题的修复入口。
+
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
 
 ## 何时使用
 
@@ -26,7 +28,9 @@ description: 配置 reBot Arm（B601-DM / B601-RS）的关节电机：写入/校
 - 硬件：2 个 **≥3 英寸工具夹具**固定机械臂底座、正规品牌 XT30 输出电源（DM 24V / RS 48V）、USB-CAN 转接板（DM）或 PCAN-USB（RS）
 - 已读 `rebot-arm-safety`（本操作涉及带电调试与电机运动）
 
-## 0. 安全要点
+> 状态记忆：写 ID/零点标定完成后更新 memory/local-machine-env.md（见 AGENTS.md 第 3 节）。
+
+## 👤 0. 安全要点
 
 > ⚠️ 写 ID / 切换电机线缆前，先完成 `rebot-arm-safety` 检查清单：
 > - **断电插拔**：切换 3 芯线连接（电机 ↔ 转接板）前，必须确保当前电机**失能且电源断电**，**禁止热插拔**，否则可能造成电机参数异常甚至损坏；
@@ -34,9 +38,9 @@ description: 配置 reBot Arm（B601-DM / B601-RS）的关节电机：写入/校
 > - **工具夹具固定**：使用 ≥3 英寸工具夹具将机械臂底座固定牢靠，防止运动时跌落；
 > - **防失控**：设置合理程序参数与急停；出现抖动、异响、撞限位等异常**立即断电**。
 
-## 1. DM 流程（B601-DM）
+## 🔀 1. DM 流程（B601-DM）
 
-### 1.1 电机 ID 对照表
+### 🔀 1.1 电机 ID 对照表
 
 reBot Arm 每个关节电机的 CAN ID 与 Master ID 按下表设置，**Master ID = 0x10 + CAN ID**（如 CAN ID 0x01 → Master ID 0x11）：
 
@@ -49,7 +53,7 @@ reBot Arm 每个关节电机的 CAN ID 与 Master ID 按下表设置，**Master 
 
 > 注意：组装时 **1 号电机和 2 号电机之间的 3 芯线束必须连接**（易漏）。
 
-### 1.2 方式一：DM_Tools（Windows 官方上位机）
+### 👤 1.2 方式一：DM_Tools（Windows 官方上位机）
 
 官方推荐使用 DM_Tools 逐个电机写入 ID（Windows 独占，下载见官方 Wiki 软件链接）：
 
@@ -61,7 +65,7 @@ reBot Arm 每个关节电机的 CAN ID 与 Master ID 按下表设置，**Master 
 
 > ⚠️ **注意事项**：DM_Tools 调试界面走 CAN 总线通信，**不要点击 CAN ID 旁的 `Read` / `Set` 按钮**——点击 `Set` 会把 CANBUS 上连接的所有电机 CAN ID 统一改掉（官方 FAQ，见常见问题 2）。
 
-### 1.3 方式二：motorbridge Python 扫描 / 写 ID（跨平台）
+### 🤖 1.3 方式二：motorbridge Python 扫描 / 写 ID（跨平台）
 
 示例代码来自配套教程第 7 章（`motorbridge_ctrl/dm_motor_ctrl`），先拉取并激活环境：
 
@@ -139,7 +143,7 @@ if __name__ == "__main__":
 
 > 提示：逐个电机执行，`new_can_id`/`new_master_id` 按 1.1 对照表填写；写完后用 ① 扫描校验。
 
-### 1.4 DM 零点标定
+### 🔀 1.4 DM 零点标定
 
 零点标定前，**先把机械臂手动摆到官方零位姿态**（见官方 Wiki / 教程第 3 章零位姿态图；**DM 零位姿态下夹爪要完全闭合**），再对每个关节设零。
 
@@ -185,9 +189,9 @@ ctrl.close_bus()
 ctrl.close()
 ```
 
-## 2. RS 流程（B601-RS）
+## 🔀 2. RS 流程（B601-RS）
 
-### 2.1 确认 can0 并启动 gateway
+### 🔀 2.1 确认 can0 并启动 gateway
 
 ```bash
 # can0 已按环境技能配置好（bitrate 1000000），确认：
@@ -204,13 +208,13 @@ motorbridge-gateway --bind 127.0.0.1:9002
 DYLD_FALLBACK_LIBRARY_PATH=/usr/local/lib motorbridge-gateway --bind 127.0.0.1:9002
 ```
 
-### 2.2 Web 界面：扫描与零点标定
+### 👤 2.2 Web 界面：扫描与零点标定
 
 1. 浏览器打开 <https://motorbridge.github.io/motorbridge-studio/>，点击连接（右上角绿色"已连接"）。
 2. **Robot Model 选择 `rebot-arm-robstride`**，选择 RS 电机并点击扫描 Robstride 电机，**确认 1-7 关节全部在线**。
 3. 零点标定：先把机械臂摆到官方零位姿态（参考官方 Wiki 零位图），点击**使能（Enable）**按钮后，再点击 **Zero+Save** 即可将当前位置设置为零点。
 
-### 2.3 RS 电机参数初始化（三步，首次使用必做）
+### 👤 2.3 RS 电机参数初始化（三步，首次使用必做）
 
 B601-RS 大部分示例运行在 **MIT 模式**；`pos_vel` 位置模式直接使用位置环增益 `loc_kp`、最大速度 `vel_max`，运动行为还受速度环增益 `spd_kp` 与加速度 `acc_rad` 影响。**若未初始化推荐参数或各关节参数不一致，位置模式会出现响应、速度、加减速异常**。在 Robot Model 选择 `rebot-arm-robstride`、扫描确认 1-7 在线、完成零点标定后，按顺序执行：
 
@@ -220,7 +224,7 @@ B601-RS 大部分示例运行在 **MIT 模式**；`pos_vel` 位置模式直接�
 
 > 写入完成后，MotorBridge Studio **自动回读参数校验**；页面提示"写入后回读校验匹配"即初始化成功。
 
-### 2.4 RS 写电机 ID
+### 🔀 2.4 RS 写电机 ID
 
 - Web 界面：设置电机 ID 时，**`can_id` 设置为对应关节的编号，`master_id` 固定**（灵足电机 master_id 固定为 `0xfd`，见教程示例）。
 - Python（`3_set_id.py`）：
@@ -269,7 +273,7 @@ ctrl.close_bus()
 ctrl.close()
 ```
 
-## 3. 写完后验证（扫描确认所有电机在线）
+## 🤖 3. 写完后验证（扫描确认所有电机在线）
 
 **DM**（Python 扫描 0x01-0x07，见 1.3 ①，期望 7 个电机全部 `[find]`，且寄存器 8/7 与对照表一致）：
 
@@ -285,6 +289,14 @@ motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 7 -
 
 期望输出 1-7 全部在线。若有缺失，检查对应关节的 ID 是否写对（或接线/断电插拔后重扫）。
 
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|------|----------|----------|
+| DM：`python 2_scan_DMmotor.py`（扫描 0x01-0x07） | 7 个电机全部 `[find]`，寄存器 8/7 与 1.1 对照表一致 | 检查对应关节 ID/接线，断电插拔后重扫 |
+| RS：`motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 7 --timeout-ms 300` | 1-7 全部在线 | 报超时先扫描验证是否已写入；缺失关节检查 ID/接线后重扫 |
+| RS 参数初始化（2.3 三步 Write 后自动回读） | 页面提示"写入后回读校验匹配" | 位置模式响应/速度异常时重做 2.3 三步 |
+
 ## 常见问题
 
 1. **电机启动后异响（尖锐噪声）**：通常是写 ID 时意外触发了参数校准，覆盖了出厂预设参数（如转动惯量）。用官方 **DM_Tools_v1.8.0.1.exe**（仅 Windows）：从**同型号完好电机**导出完整参数 → 导入故障电机 → 更新对应 CAN ID → 保存写入参数 → 再重新零点标定。见官方 Wiki FAQ。
@@ -297,5 +309,5 @@ motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 7 -
 
 - 官方 Wiki（Getting Started）：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - MotorBridge：<https://github.com/motorbridge/motorbridge> ｜ Studio Web UI：<https://motorbridge.github.io/motorbridge-studio/>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 6 章（组装供电上电）、第 7 章（MotorBridge 电机控制库：Web 端控制、DM/RS 扫描与写 ID、设零点示例）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 6 章（组装供电上电）、第 7 章（MotorBridge 电机控制库：Web 端控制、DM/RS 扫描与写 ID、设零点示例）
 - 前置技能：`rebot-arm-environment-setup`（环境/接线/上电）｜ `rebot-arm-safety`（安全规范）

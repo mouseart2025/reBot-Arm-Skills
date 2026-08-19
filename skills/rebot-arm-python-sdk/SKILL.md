@@ -11,6 +11,8 @@ description: 使用 reBot Arm 的 Python SDK（reBotArm_control_py / rebotArm_ct
 
 > 📌 本技能所有命令与代码均来自官方教程第 8 章及示例仓库；**完整可运行的示例（含 import 与主函数）以克隆仓库 `rebotArm_ctrl/example/rebotDM`、`example/rebotRS` 中的示例文件为准**，教程正文只给出核心代码片段，请勿凭空补写导入语句。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户想**编写 Python 脚本**让机械臂运动到指定关节角度（如 `[0,0,0,0.5,0.5,0,-1]`）
@@ -35,7 +37,7 @@ description: 使用 reBot Arm 的 Python SDK（reBotArm_control_py / rebotArm_ct
 2. **Ctrl+C 退出要等归位**：教程明确——"使用 ctrl c 退出程序后**等待几秒，不要一直输入 ctrl c**，需要等待机械臂**自动归位后失能**"。反复连按 Ctrl+C 会打断安全收尾，导致机械臂停在不安全姿态。
 3. 断电插拔线束、带电操作等更多规则见 `rebot-arm-safety`。
 
-## 1. 安装依赖并拉取示例
+## 1. 🤖 安装依赖并拉取示例
 
 ```bash
 python3 -m pip install pyyaml motorbridge
@@ -50,7 +52,7 @@ git clone https://github.com/hopcan/rebotArm_ctrl.git
 | RS 控制示例 | `rebotArm_ctrl/example/rebotRS`（如 `1_rebotRS_connect.py`、`2_rebotRS_set_zero.py`、`3_rebotRS_move_joint.py`） |
 | 配置文件 | `rebotArm_ctrl/config/rebotDM.yaml`（DM）与 `rebotArm_ctrl/config/rebotRS.yaml`（RS） |
 
-## 2. 修改参数和切换模式（config YAML）
+## 2. 🤖 修改参数和切换模式（config YAML）
 
 控制模式与参数都在 `rebotArm_ctrl/config` 下的 YAML 中修改。教程举例（DM，`Shoulder Pan` 关节）：
 
@@ -89,7 +91,7 @@ git clone https://github.com/hopcan/rebotArm_ctrl.git
 
 > ⚠️ 教程提示：Python SDK 各关节控制器的参数需要按实际使用需求调节，**目前的参数只能满足精度不高的场景**。改参数后务必先低速小角度验证（见"安全要点"）。
 
-## 3. 连接 / 断开机械臂（上下文管理）
+## 3. 🤖🔀 连接 / 断开机械臂（上下文管理）
 
 ### 3.1 先创建总线控制器
 
@@ -139,7 +141,7 @@ with reBotArm_handle(ctrl, "rebotRS") as handle:
 | `__exit__` | 调用 `disconnect` 自动断开：**先恢复初始状态，然后失能** |
 | 替代方式 | 不想用上下文管理时，可直接调用 `connect` 函数和 `disconnect` 函数 |
 
-## 4. 控制机械臂运动（move_to_joint_positions）
+## 4. 🔀 控制机械臂运动（move_to_joint_positions）
 
 教程示例（`example/rebotDM/3_rebotDM_move_joint.py` 或 `example/rebotRS/3_rebotRS_move_joint.py`）：
 
@@ -159,7 +161,7 @@ while True:
 - `move_to_joint_positions([...])` 传入 **7 个关节的目标角度，单位弧度**（如 `[0,0,0,0.5,0.5,0,-1]`）。
 - 运动前务必确认目标角度在配置的 `posmin / posmax` 限位内；第一次运行先小角度测试。
 
-## 5. 读取电机状态（motor_state）
+## 5. 🤖 读取电机状态（motor_state）
 
 `handle.motor_state` 是一个**字典，包含所有关节的状态信息**（教程原文），按 `motor_id` 读取：
 
@@ -171,7 +173,7 @@ while True:
 
 `motor_id` 取 `1..7`（教程循环 `list(range(1,8))`）。示例中的 `:.3f` 表示保留 3 位小数。
 
-## 6. 设置零点（set_zero_position）
+## 6. 👤🤖 设置零点（set_zero_position）
 
 教程示例（`example/rebotDM/2_rebotDM_set_zero.py` 或 `example/rebotRS/2_rebotRS_set_zero.py`）：
 
@@ -188,6 +190,16 @@ with reBotArm_handle(ctrl, "rebotDM") as handle:
 通过机械臂控制类调用 `set_zero_position` 即可给机械臂**所有关节设置零点**。
 
 > ⚠️ 设置零点前把机械臂摆到安全姿态（物理上接近零位），避免把当前姿态当作零位；标定细节见 `rebot-arm-motor-config`。
+
+## ✅ 验证与预期结果
+
+下表用本技能已有的命令与预期验证执行是否成功：
+
+| 运行 | 期望结果 | 失败处理 |
+|------|----------|----------|
+| `with reBotArm_handle(ctrl, "rebotDM") as handle:`（RS 用 `"rebotRS"`） | 自动连接成功进入 with 块：添加电机、上电检查、CAN ID / master ID 校验、切换目标控制模式均通过，无连接失败日志 | 输出连接失败日志：检查端口存在与权限（DM：`sudo chmod 666 /dev/ttyACM*`；RS：can0 是否 up）后重试 |
+| `handle.move_to_joint_positions([0,0,0,0.5,0.5,0,-1])` 后读取 `handle.motor_state[motor_id]` | 各关节运动到位，pos/vel/torq 读数正常（如 motor 4/5 的 pos 接近 0.5 rad、单位正确），无异常抖动 | 读数异常/未到位：确认目标角度在 posmin/posmax 内；参数需按实际控制效果调整（当前参数只满足精度不高的场景）；异常抖动立即断电 |
+| `handle.set_zero_position()`（DM/RS 各自 with 块内） | 机械臂所有关节零点设置成功 | 未生效/报错：确认机械臂已物理摆到接近零位的安全姿态后重试，并检查连接与配置 |
 
 ## 常见问题
 
@@ -206,5 +218,5 @@ with reBotArm_handle(ctrl, "rebotDM") as handle:
 - 官方底层库 reBotArm_control_py（含 `config/rebotarm_dm.yaml` 与 `rebotarm_rs.yaml`）：<https://github.com/Seeed-Projects/reBotArm_control_py>
 - 教程示例仓库 rebotArm_ctrl（`example/rebotDM`、`example/rebotRS`）：<https://github.com/hopcan/rebotArm_ctrl>
 - MotorBridge（电机控制中间件）：<https://github.com/motorbridge/motorbridge>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》**第 8 章"使用 Python SDK 控制 reBot Arm"**、第 7 章（Miniforge 环境与 motorbridge 安装）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）**第 8 章"使用 Python SDK 控制 reBot Arm"**、第 7 章（Miniforge 环境与 motorbridge 安装）
 - 相关技能：`rebot-arm-safety`（必读）｜ `rebot-arm-environment-setup`（环境与接口）｜ `rebot-arm-motor-config`（电机 ID / 零点标定）｜ `rebot-arm-motor-control`（MIT/POS_VEL 底层控制）｜ `rebot-arm-troubleshooting`（排错）

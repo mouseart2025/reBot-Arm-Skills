@@ -9,6 +9,9 @@ description: 搭建 reBot Arm（B601-DM / B601-RS）的开发环境：安装 Min
 
 本技能完成 reBot Arm 使用前的**软件环境**（conda + motorbridge + 通信接口）与**首次硬件上电**准备。所有后续技能（电机标定、遥操作、数据采集、训练推理）都依赖本技能的环境。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+> 状态记忆：本技能每完成一个关键步骤（环境装好、端口配好、上电成功），更新 `memory/local-machine-env.md`（见 AGENTS.md 第 3 节）。
+
 ## 何时使用
 
 - 用户新电脑/新环境首次使用 reBot Arm
@@ -25,7 +28,7 @@ description: 搭建 reBot Arm（B601-DM / B601-RS）的开发环境：安装 Min
 
 > ⚠️ 接线/上电前完成 `rebot-arm-safety` 检查清单：断电插拔、电压档位（220V→230V / 110V→115V）、正负极正确、周围 50cm 无人员、手边有电源开关。
 
-## 1. 安装 Miniforge（推荐，隔离环境）
+## 1. 安装 Miniforge（推荐，隔离环境）🤖
 
 **Ubuntu / Jetson / Raspberry Pi：**
 
@@ -50,7 +53,7 @@ bash Miniforge3-MacOSX-$(uname -m).sh
 source ~/.bashrc
 ```
 
-## 2. 创建 conda 环境并安装 motorbridge
+## 2. 创建 conda 环境并安装 motorbridge 🤖/🔀
 
 ```bash
 conda create -y -n rebot python=3.12
@@ -67,7 +70,9 @@ motorbridge --version   # 或 motorbridge -v，输出如 motorbridge 0.5.0
 > macOS 提示：遥操作帧率低可能是旧版 WCH CH34x 驱动导致；macOS 10.14+ 自带 AppleUSBCHC0M 驱动，可卸载旧驱动切换。
 > 不建议用 Windows 系统 Python 直接装（用 conda 环境），Linux 下务必用物理机而非虚拟机/WSL。
 
-## 3. 配置通信接口（按型号）
+## 3. 配置通信接口（按型号）🔀
+
+> 本节命令含 `sudo`，需要用户输入密码或授权（🔀）；Jetson 编译驱动耗时较长。
 
 ### 3.1 DM：串口权限
 
@@ -138,9 +143,10 @@ pcan_refresh                  # 输出如 PCAN_IF=can1，之后用 $PCAN_IF 代�
 > **macOS RS 用户**：需要安装 PCBUSB 库并配置 `DYLD_FALLBACK_LIBRARY_PATH`（见官方 Wiki 的 PCAN-USB 章节），否则连接报 `load PCBUSB failed`。
 > **Windows RS 用户**：安装 PCAN-USB 驱动；设备管理器不识别时需重刷固件（详见官方 Wiki"PCAN Firmware Download & Driver Repair"章节）。
 
-## 4. 首次接线与供电上电
+## 4. 首次接线与供电上电 👤
 
-> 本节请严格按 `rebot-arm-safety` 的"首次上电前检查清单"执行。
+> 本节为**用户物理操作**（接线、拨码、上电），AI 负责逐项指导与确认，不要替用户"执行"。
+> 请严格按 `rebot-arm-safety` 的"首次上电前检查清单"执行。
 
 1. **接线**（断电状态下）：
    - 电源输出（XT30）→ 机械臂电源输入
@@ -193,6 +199,17 @@ motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 7 -
 | RS CAN | `ip -br link show can0` | UP，bitrate 1000000 |
 | 电机在线（可选） | 上面的扫描脚本 | 找到 1-7（RS）或对应 ID（DM） |
 
+## ✅ 验证与预期结果
+
+| 运行/动作 | 期望结果 | 失败处理 |
+|-----------|---------|---------|
+| `conda activate rebot && python --version`（🤖） | Python 3.12 | 环境未建 → 重跑第 2 节 |
+| `motorbridge --version`（🤖） | 0.4.x/0.5.x | `pip install motorbridge` 重装；检查 conda 环境 |
+| `ls /dev/ttyACM*`（DM，🤖） | 有设备且权限 666 | brltty 占用 → `sudo apt remove brltty`；重插 USB |
+| `ip -br link show can0`（RS，🤖/🔀） | can0 UP、bitrate 1000000 | `sudo modprobe peak_usb`；Jetson 需先编译 PCAN 驱动 |
+| 电机扫描（可选，🤖） | 找到全部 7 个电机 | 检查上电/接线/ID，转 `rebot-arm-motor-config` |
+| 完成状态记录（🤖） | `memory/local-machine-env.md` 已更新 | — |
+
 ## 常见问题
 
 - **找不到 /dev/ttyACM0**：检查 USB 线；Ubuntu 下 `brltty` 可能占用串口 → `sudo apt remove -y brltty` 后重插。
@@ -204,5 +221,5 @@ motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 7 -
 
 - Wiki：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - motorbridge：<https://github.com/motorbridge/motorbridge> ｜ Studio：<https://motorbridge.github.io/motorbridge-studio/>
-- 配套教程：本仓库同目录教程第 7 章（环境安装与 motorbridge）、第 6 章（组装供电上电）
+- 配套教程：本地参考教程（未随本仓库发布）第 7 章（环境安装与 motorbridge）、第 6 章（组装供电上电）
 - 下一步：电机 ID 与零点标定 → `rebot-arm-motor-config`

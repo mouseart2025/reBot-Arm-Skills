@@ -9,6 +9,8 @@ description: 用 LeRobot 在 reBot Arm（B601-DM / B601-RS）数据集上训练 
 
 本技能覆盖 reBot Arm（B601-DM / B601-RS）模仿学习的完整闭环：在已采集的 LeRobot 数据集上训练 **ACT（Action Chunking with Transformers）** 策略，用 `lerobot-record` 加载策略在真机推理评估，再根据失败类型补数据迭代重训。训练需要 NVIDIA GPU（conda 的 `lerobot` 环境），推理使用与采集时完全一致的机器人与相机配置。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户问"怎么训练 ACT / 跑 lerobot-train / 模型效果差"
@@ -24,7 +26,7 @@ description: 用 LeRobot 在 reBot Arm（B601-DM / B601-RS）数据集上训练 
 | 硬件 | NVIDIA GPU（训练）；真机 + 双相机（推理） | 只有核显/无 N 卡用云服务器训练 |
 | 安全 | 已完成安全检查清单 | 先读 `rebot-arm-safety` |
 
-## 0. 安全要点
+## 👤 0. 安全要点
 
 > ⚠️ **推理是自动运行**，无人值守风险高。运行前完成 `rebot-arm-safety` 检查清单（周围无人、障碍清除、手在电源开关旁），并**先空载验证一遍轨迹**再放任务物体。
 
@@ -33,7 +35,7 @@ description: 用 LeRobot 在 reBot Arm（B601-DM / B601-RS）数据集上训练 
 3. 注意区分：**训练阶段**可用 Ctrl+C 中断（已存 checkpoint 自动保存、可续训）；**推理阶段**必须用 ESC 结束。
 4. 首次推理必须有人值守；评估回合之间（`reset_time_s` 时间）及时复位物体，保证每次初始状态尽量一致。
 
-## 1. 概念速览：ACT 与 Action Chunking（第 15 章）
+## 👤 1. 概念速览：ACT 与 Action Chunking（第 15 章）
 
 ACT = **Action Chunking + Transformer**，LeRobot 内置的标准策略之一。
 
@@ -64,7 +66,7 @@ ACT **只看当前帧**：每次根据"现在看到什么 + 关节在哪"输出�
 
 **适合的任务**：桌面级抓取/放置/整理、单任务或少数任务、秒级到一分钟内的短周期、视觉信息充足、算力有限的设备（消费级显卡可训练，CPU 也能推理）。
 
-## 2. 三个关键配置：Batch Size、Learning Rate、Steps
+## 🤖 2. 三个关键配置：Batch Size、Learning Rate、Steps
 
 先在终端输入 `nvidia-smi` 查看自己的显卡和显存，消费级显卡（如 RTX 3050）也能训。
 
@@ -111,7 +113,7 @@ ACT 自带预设（`use_policy_training_preset` 默认启用，`lerobot-train` �
 
 步数设大点也没关系：训练中可用 Ctrl+C 中断，也可以训练完挑选步数合适的 checkpoint 使用，丢弃训练不够或过拟合的存档。概念对照：**总帧数** ≈ 录像的总长度；**epoch（一轮）** = 把录像从头到尾完整看一遍；**步数** = 总共看了多少小段。
 
-## 3. 启动训练
+## 🤖 3. 启动训练
 
 在 conda 的 `lerobot` 环境里运行（`--dataset.repo_id` 用采集时的数据集名；全部参数可用 `lerobot-train --help` 查看）。
 
@@ -179,7 +181,7 @@ lerobot-train \
 
 **时间预期**：10 万步在消费级显卡上通常是**几个小时**的量级，具体看显卡和 batch size。
 
-## 4. Checkpoint 管理
+## 🤖 4. Checkpoint 管理
 
 不用手动保存：训练每 **20,000 步（`save_freq`）自动存一个 checkpoint**，训练结束还会存一份最后的。产物结构：
 
@@ -209,7 +211,9 @@ lerobot-train \
 - 续训**以存档配置为准**（`train_config.json` 里保存的配置），命令行再传参数也会被忽略；想改参数（换步数、换 batch size）就开一个新 run，别用 resume；
 - 从最近的 checkpoint 接着跑：优化器状态、步数计数都会还原，loss 曲线无缝衔接。
 
-## 5. 查看 Loss 与 GPU
+> 状态记忆：训练完成后更新 memory/local-machine-env.md 的「已训练模型」表（见 AGENTS.md 第 3 节）。
+
+## 🤖 5. 查看 Loss 与 GPU
 
 训练日志每隔一段时间（默认每 200 步，由 `--log_freq` 控制）打印一行汇总：
 
@@ -236,7 +240,7 @@ step: 10000  smpl: 80K  ep: 35.6  loss: 1.832  grdn: 12.4  lr: 1.0e-05  updt_s: 
 2. **应该整体收敛、允许抖动的：`grdn`**——大趋势跟随 loss 走低并稳定，毛刺正常；怕的是持续放大、一波比一波高（发散前兆，处理同上：降学习率）；
 3. **应该保持不变的：`lr`、`updt_s`、`data_s`、GPU 利用率**——用 `watch -n 1 nvidia-smi` 观察，利用率持续偏低或忽高忽低，说明 GPU 在等数据，瓶颈在数据加载而不在显卡。
 
-## 6. 真机推理（评估）
+## 🤖👤 6. 真机推理（评估）
 
 用 `lerobot-record` 加载策略即可，机器人和相机参数与采集时**完全一致**。训练时模型吃的是归一化数据，推理时按同一套规则处理进出（图像 resize + ImageNet 均值方差、state 减均值除标准差、action 乘标准差加均值，统计量来自训练集的 `meta/stats.json`）——所以相机 key（front/side）与采集严格一致至关重要。
 
@@ -305,7 +309,7 @@ lerobot-record \
 
 > ⚠️ 结束用 **ESC**，切记**不要用 Ctrl+C**。停之前先让机械臂完成当前动作块或手动回安全位，避免停在半空受力姿态；机械臂运行异常随时准备断电。
 
-## 7. 评估：成功率、完成时间与泛化
+## 🤖👤 7. 评估：成功率、完成时间与泛化
 
 ### 7.1 成功率与完成时间
 
@@ -337,7 +341,7 @@ lerobot-record \
 
 > **先排除配置问题，再怀疑数据问题——乱动是配置病，够不到才是数据病。**
 
-## 8. 数据迭代闭环
+## 👤🤖 8. 数据迭代闭环
 
 把失败变成数据，闭环的最后一步：
 
@@ -347,7 +351,15 @@ lerobot-record \
 
 至此完整闭环跑通：遥操作 → 采集 → 检查 → 训练 → 推理 → 评估 → 迭代，这套流程对任何新任务原样复用。
 
-## 9. 常见问题
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|------|----------|----------|
+| 训练日志 `loss` | 三段式下降：初期陡降 → 中期缓降 → 后期低位小幅波动走平 | 一直不降：加 steps / 加数据，仍不动再试 `--policy.optimizer_lr=2e-5`；降后反弹回升：学习率减半重训 |
+| `outputs/train/act_rebot_test/checkpoints/last/pretrained_model` 目录 | 训练完成（每 20,000 步自动保存）后存在 | 不存在：确认训练跑过 20,000 步，未到则继续训练 |
+| 固定条件连测 20 次的成功率 | ≥50% 正常开局，≥80% 优秀 | 按失败类型分析表补录 10-20 条后重训 |
+
+## 👤 9. 常见问题
 
 | 问题 | 处理 |
 |------|------|
@@ -362,5 +374,5 @@ lerobot-record \
 
 - 官方 Wiki：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - LeRobot（Seeed 分支）：<https://github.com/Seeed-Projects/lerobot>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 15 章（ACT 模型与 Action Chunking）、第 16 章（训练第一个 ACT 策略）、第 17 章（真机推理、评估与数据迭代）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 15 章（ACT 模型与 Action Chunking）、第 16 章（训练第一个 ACT 策略）、第 17 章（真机推理、评估与数据迭代）
 - 相关技能：`rebot-arm-data-collection`（数据集采集）｜ `rebot-arm-safety`（安全）｜ `rebot-arm-troubleshooting`（故障排查）

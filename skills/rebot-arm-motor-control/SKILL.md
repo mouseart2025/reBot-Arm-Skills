@@ -9,6 +9,8 @@ description: 用 MotorBridge Python API 对 reBot Arm（B601-DM / B601-RS）关�
 
 本技能使用 **MotorBridge Python API** 对 reBot Arm 的单个关节电机做底层调试：创建控制器、添加电机、使能/失能、扫描电机 ID、切换控制模式（MIT / POS_VEL / VEL / FORCE_POS）并发送控制指令；同时讲解 CAN 协议基础，帮助理解电机在总线上的通信方式。适用于 **B601-DM**（达妙电机，串口）与 **B601-RS**（灵足电机，SocketCAN）。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户要**单电机调试**、测试某个电机是否正常（使能、转动、反馈）
@@ -32,11 +34,11 @@ description: 用 MotorBridge Python API 对 reBot Arm（B601-DM / B601-RS）关�
 - **只给 tau 时不要太大**，否则电机会越转越快以达到期望力矩。
 - RS（QDD 低减速比）失能/断电瞬间自锁性弱，**扶稳机械臂**再失能。
 
-## 1. MotorBridge Python API 基础
+## 1. 🤖 MotorBridge Python API 基础
 
 示例脚本仓库（教程第 7 章）：`git clone https://github.com/hopcan/motorbridge_ctrl.git`，DM 示例在 `dm_motor_ctrl/`，RS 示例在 `rs_motor_ctrl/`。
 
-### 1.1 创建控制器与添加电机
+### 1.1 🤖 创建控制器与添加电机
 
 | 型号 | 创建控制器 | 添加电机 | 说明 |
 |------|-----------|---------|------|
@@ -53,7 +55,7 @@ ctrl = Controller("can0")
 motor = ctrl.add_robstride_motor(0x01, 0xfd, "rs-00")
 ```
 
-### 1.2 使能 / 失能（3 秒后自动失能示例）
+### 1.2 🔀 使能 / 失能（3 秒后自动失能示例）
 
 `ctrl.enable_all()` 使能总线上所有电机，`ctrl.disable_all()` 失能。DM 示例（`1_enable_dm.py`，使能后电机灯变绿，3 秒后失能）：
 
@@ -76,7 +78,7 @@ ctrl.disable_all()   # 失能总线上所有电机
 
 RS 用法相同，仅把 `Controller.from_dm_serial(...)` 换成 `Controller("can0")`、`add_damiao_motor` 换成 `add_robstride_motor(can_id, 0xfd, "rs-00")`（示例 `1_enable_rs.py`）。
 
-### 1.3 扫描电机 ID
+### 1.3 🤖 扫描电机 ID
 
 DM 扫描（`2_scan_DMmotor.py`）：逐个 can_id 创建电机并读取寄存器验证，可用于核对 can_id 与 master_id 是否与电机内保存的一致：
 
@@ -123,7 +125,7 @@ def scan_robstride_motors(start_can_id, end_can_id, channel="can0"):
     return found_motors
 ```
 
-### 1.4 切换控制模式
+### 1.4 🤖 切换控制模式
 
 ```python
 motor.ensure_mode(Mode.MIT, timeout_ms=1000)      # 切换到 MIT 模式，超时 1000ms
@@ -132,7 +134,7 @@ motor.ensure_mode(Mode.VEL, 1000)                 # 速度模式
 motor.ensure_mode(Mode.FORCE_POS, 1000)           # 力位混控（DM）
 ```
 
-### 1.5 MIT 控制
+### 1.5 🔀 MIT 控制
 
 `send_mit(pos=, vel=, kp=, kd=, tau=)`：kp 是刚度、kd 是阻尼、tau 是前馈力矩。DM 示例（`4_mit_ctrl.py`，只给 tau，电机持续旋转）：
 
@@ -191,7 +193,7 @@ ctrl.disable_all()
 
 > 提示：DM 的位置速度/速度模式需要设置**非 0 正数阻尼因子**，否则会出现震荡与过冲（教程第 4 章）。
 
-## 3. 10ms 控制循环示例（读取电机状态）
+## 3. 🔀 10ms 控制循环示例（读取电机状态）
 
 示例 `8_get_state.py`（DM）/ `7_get_state.py`（RS）：每 10ms 发送一次控制帧并读取电机应答帧，相当于一问一答，可同时观察 pos/vel/torque 反馈：
 
@@ -235,7 +237,7 @@ ctrl.close()
 
 RS 版仅把 `Controller.from_dm_serial(channel, 921600)` 换成 `Controller("can0")`、`add_damiao_motor` 换成 `add_robstride_motor(0x01, 0xfd, "rs-00")`。注意 `get_state()` 读取的是上一帧应答；只想取状态不想让电机运动时，用 `motor.request_feedback()`（见设置零点示例）。
 
-## 4. 设置电机零点
+## 4. 🤖 设置电机零点
 
 示例 `9_set_zero.py`（DM）/ `8_set_zero.py`（RS），核心是 `motor.set_zero_position()`，把当前位置设为零点，然后读取状态确认：
 
@@ -265,7 +267,7 @@ ctrl.close()
 
 ## 5. CAN 协议基础
 
-### 5.1 SocketCAN
+### 5.1 🔀 SocketCAN
 
 SocketCAN 是 CAN 协议在 **Linux 系统**上的一种主流实现方式：使用套接字 API 与 Linux 网络栈技术，把 CAN 设备驱动实现为**网络接口**（如 `can0`），易用、兼容性好。RS 电机即通过 SocketCAN 通信，`Controller("can0")` 底层就是在该接口上收发 CAN 帧。RS 配置接口（套件为 PCAN-USB，通常直接出现 can0/can1）：
 
@@ -298,6 +300,14 @@ sudo ip link set can0 up
 - **Master ID（master_id）**：控制端（主机）标识，用于应答/校验。DM：`master_id = 0x10 + can_id`（电机 1 → `0x11`、电机 7 → `0x17`）；RS：**固定 `0xfd`**。
 - 电机内保存的 can_id/master_id 必须与代码一致，否则扫描/通信失败（DM 扫描脚本即通过读取寄存器 7（master id）、8（can id）核对）。
 
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|------|---------|---------|
+| `python 1_enable_dm.py` | DM 电机灯变绿，3 秒后自动失能 | 灯不变绿/无响应 → 核对 can_id/master_id 与接线（见常见问题） |
+| `python 2_scan_DMmotor.py` | 打印 `[find] motor_can_id=0x.. motor_master_id=0x..` | 打印 `[no respond]` → 检查供电、接线与电机 ID |
+| `python 8_get_state.py` | 循环打印 pos/vel/torque（10ms 一问一答） | 打印 `no respond` → 确认已 enable 且模式切换成功 |
+
 ## 6. 常见问题
 
 | 现象 | 原因与处理 |
@@ -314,5 +324,5 @@ sudo ip link set can0 up
 - motorbridge：<https://github.com/motorbridge/motorbridge> ｜ Studio：<https://motorbridge.github.io/motorbridge-studio/>
 - 电机示例代码：<https://github.com/hopcan/motorbridge_ctrl.git>
 - SocketCAN 内核文档：<https://docs.linuxkernel.org.cn/networking/can.html>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 4 章（关节执行器与运控模式）、第 5 章（CAN 总线与电机通信）、第 7 章（Python 代码控制 DM / RS 电机）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 4 章（关节执行器与运控模式）、第 5 章（CAN 总线与电机通信）、第 7 章（Python 代码控制 DM / RS 电机）
 - 相关技能：`rebot-arm-safety`（安全）｜ `rebot-arm-environment-setup`（环境）｜ `rebot-arm-motor-config`（写 ID/标定零点）｜ `rebot-arm-troubleshooting`（排错）

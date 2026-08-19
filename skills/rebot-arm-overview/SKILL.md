@@ -12,6 +12,9 @@ reBot Arm B601 是 Seeed Studio 发布的**完全开源**桌面机械臂（结�
 2. 理解两个型号的本质区别，做出选型/任务判断；
 3. 掌握硬件组成、关节与规格，为后续操作技能提供背景。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+> 本技能为**认知/选型类**技能，不含真机命令；执行类步骤见各操作技能。
+
 ## 何时使用
 
 - 用户问"reBot Arm 是什么 / 有哪些型号 / 有什么区别 / 我该买哪个"
@@ -96,9 +99,17 @@ reBot Arm B601 是 Seeed Studio 发布的**完全开源**桌面机械臂（结�
 - **"我该怎么确认我的型号？"** → 看电机铭牌/包装（Damiao=DM，Robstride/灵足=RS）；DM 用串口连接、24V 电源；RS 用 PCAN-USB、48V 电源。
 - **"两个型号能共用教程吗？"** → 能。所有课程/命令仅通信分支与安全细节不同，其余完全一致。
 
+## ✅ 验证与预期结果
+
+| 运行/动作 | 期望结果 | 失败处理 |
+|-----------|---------|---------|
+| 请用户查看电机铭牌或包装（👤） | 明确是 Damiao（DM）还是 Robstride/灵足（RS） | 仍不确定：看电源电压（24V=DM / 48V=RS）或通信接口（串口 /dev/ttyACM*=DM，PCAN can0=RS） |
+| 对照第 2 节选型表确认任务需求 | 能回答"做 XX 任务该选/该用哪个型号" | 需求模糊时询问负载、速度、是否需力控/遥操作 |
+| 记录型号与平台到 `memory/local-machine-env.md` | 型号字段已填写 | — |
+
 ## 参考
 
 - Wiki Quick Start：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - 开源仓库：<https://github.com/Seeed-Projects/reBot-DevArm>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》（第 1、2、4 章）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）（第 1、2、4 章）
 - 下一步：环境搭建见 `rebot-arm-environment-setup`；任何操作前先读 `rebot-arm-safety`。

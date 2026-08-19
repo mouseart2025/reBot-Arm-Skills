@@ -9,6 +9,8 @@ description: 在 ROS2 中使用 reBot Arm（B601-DM / B601-RS）：构建 rebota
 
 本技能把 reBot Arm（B601-DM / B601-RS）封装进标准 ROS2 生态：构建 `rebotarm_ros2` 工作空间、一条命令启动 bringup（驱动节点 + RViz 可视化），并通过 **Topic / Service / Action** 三种标准接口控制机械臂，最后给出安全停车、状态机监控与故障码排查方法。所有命令来自官方教程第 31/32/33 章，DM 与 RS 分支请严格按型号执行。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户说"用 ROS2 控制机械臂"、"启动 bringup / RViz"
@@ -27,7 +29,7 @@ description: 在 ROS2 中使用 reBot Arm（B601-DM / B601-RS）：构建 rebota
 
 > ⚠️ 接线/上电前完成 `rebot-arm-safety` 检查清单：断电插拔、电压档位（220V→230V / 110V→115V）、正负极正确、周围 50cm 无人员、手边有电源开关。
 
-## 0. 安全要点
+## 🔀 0. 安全要点
 
 > ⚠️ **`/rebotarm/move_to_pose_ik` 只做 IK 求解并直接更新目标关节角，机械臂运动很快**——首次运行前先清空运动范围、降低速度参数，人守在电源开关旁。
 > ⚠️ **轨迹执行期间，低层 cmd 话题默认被拒绝**（`cmd_arbitration:=reject`），不会抢占轨迹；如需强制覆盖，启动时传 `cmd_arbitration:=preempt`。
@@ -49,7 +51,7 @@ description: 在 ROS2 中使用 reBot Arm（B601-DM / B601-RS）：构建 rebota
 
 > 配套理论（第 32 章）：URDF/Xacro 描述机械臂"骨骼与关节"，TF 坐标树 + Robot State Publisher 结合实时关节角发布坐标变换，RViz 据此画出机械臂实时姿态——这正是 bringup 可视化链路的原理。
 
-## 2. 工作空间构建
+## 🤖 2. 工作空间构建
 
 ### 2.1 获取工作空间（官方仓库）
 
@@ -144,7 +146,9 @@ rebotarmcontroller reBotArmController
 
 > 注意：RS 版本还包含 `motion_profiles.py` 和 `trajectory_profiles.py` 两个运动规划文件，DM 版本没有。
 
-## 3. 启动完整系统（bringup + RViz）
+> 状态记忆：工作空间编译成功后更新 memory/local-machine-env.md（见 AGENTS.md 第 3 节）。
+
+## 🤖 / 👤 3. 启动完整系统（bringup + RViz）
 
 ### 3.1 启动命令
 
@@ -203,7 +207,7 @@ uint8[] per_joint_status_code  # 每个关节电机的状态码
 string[] error_codes      # 错误码列表
 ```
 
-## 4. 三种控制接口
+## 🤖 4. 三种控制接口
 
 所有接口默认挂在 `/rebotarm` 命名空间下，可通过 launch 参数 `arm_namespace` 覆盖。**统一单位：角度为弧度 rad，时间为秒。**
 
@@ -315,7 +319,7 @@ ros2 run rebotarmcontroller MoveToPose -- --x 0.30 --y 0.0 --z 0.30 --qw 1.0 --d
 ros2 run rebotarmcontroller GravityCompensation
 ```
 
-## 5. 安全停车与故障排查
+## 🤖 / 👤 5. 安全停车与故障排查
 
 ### 5.1 安全停车
 
@@ -360,7 +364,15 @@ ros2 topic echo /rebotarm/arm_status --field state_machine
 
 查看完整状态（含故障码）：`ros2 topic echo /rebotarm/arm_status --once`
 
-## 6. 常见问题（FAQ）
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|------|---------|---------|
+| `ros2 pkg executables rebotarmcontroller` | 列出 GravityCompensation / GripperControl / MoveTo / MoveToPose / reBotArmController 等入口 | 确认 `colcon build` 成功且已 `source install/setup.bash` |
+| `ros2 topic list` | 看到 `/rebotarm/joint_states`、`/rebotarm/arm_status`、`/rebotarm/joints/jointN/state` | 确认 bringup 已启动，硬件接线与串口/CAN 权限正常 |
+| `ros2 service call /rebotarm/enable std_srvs/srv/Trigger` | 返回 `success: true`（使能成功） | 查看 `/rebotarm/arm_status` 的 `error_codes` / `per_joint_status_code` |
+
+## 🔀 6. 常见问题（FAQ）
 
 | 问题 | 排查与修复 |
 |------|-----------|
@@ -374,5 +386,5 @@ ros2 topic echo /rebotarm/arm_status --field state_machine
 - 官方 Wiki：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - 工作空间：<https://github.com/Yang-Ci/ReBot_Arm_web_RS>（RS）｜ <https://github.com/Yang-Ci/Borot-Arm_Mujoco>（DM）
 - 底层 SDK：<https://github.com/Seeed-Projects/reBotArm_control_py> ｜ motorbridge：<https://github.com/motorbridge/motorbridge>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 31 章（ROS2 通信与机器人软件架构）、第 32 章（URDF、TF 与机器人模型）、第 33 章（reBot Arm ROS2 集成）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 31 章（ROS2 通信与机器人软件架构）、第 32 章（URDF、TF 与机器人模型）、第 33 章（reBot Arm ROS2 集成）
 - 相关技能：`rebot-arm-safety`（操作前必读）｜ `rebot-arm-environment-setup`（环境/接线）｜ `rebot-arm-moveit`（MoveIt2 规划）｜ `rebot-arm-troubleshooting`（故障排查）

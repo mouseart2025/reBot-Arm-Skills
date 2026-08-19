@@ -59,6 +59,12 @@ def main():
             errors.append(
                 f"{sk}: frontmatter name '{fm_name}' != directory name '{d.name}'"
             )
+        # Soft checks: AI-usage quality (warnings, not errors)
+        text = sk.read_text(encoding="utf-8")
+        if not re.search(r"🤖|👤|🔀", text):
+            warnings.append(f"{d.name}: no AI/user division markers (🤖/👤/🔀)")
+        if not re.search(r"验证|预期结果", text):
+            warnings.append(f"{d.name}: no '验证/预期结果' content")
 
     # README index table cross-check
     readme = ROOT / "README.md"
@@ -72,9 +78,17 @@ def main():
             if d.name not in listed:
                 warnings.append(f"skill '{d.name}' not listed in README index table")
 
-    for f in ["README.md", "AGENTS.md", "docs/skill-authoring-guide.md"]:
+    for f in ["README.md", "AGENTS.md", "docs/skill-authoring-guide.md",
+              "memory/local-machine-env.md"]:
         if not (ROOT / f).exists():
             errors.append(f"{f}: missing")
+
+    # Workflows and references (soft)
+    for f in ["workflows/first-run.md", "workflows/first-imitation-task.md",
+              "workflows/vision-grasping-project.md",
+              "references/fault-codes.md", "references/os-matrix.md"]:
+        if not (ROOT / f).exists():
+            warnings.append(f"{f}: missing (recommended)")
 
     print(f"skills checked: {len(skill_dirs)}")
     for w in warnings:

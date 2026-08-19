@@ -9,6 +9,8 @@ description: 为 reBot Arm（B601-DM / B601-RS）使用 MoveIt2 运动规划：�
 
 MoveIt 2 是 ROS2 生态中最主流的机械臂运动规划框架，负责**逆运动学求解、碰撞检测、轨迹规划和轨迹执行**。对于 reBot Arm，MoveIt 2 将上层规划与底层驱动隔离开：规划在 `move_group` 节点中完成，执行通过 `follow_joint_trajectory` action 下发给 `reBotArmController`。本技能覆盖 MoveIt2 系统架构、仿真/真机启动链路、SRDF 与 Planning Group、关节限制与碰撞模型、Planning Scene、笛卡尔路径、障碍物规划、轨迹执行，以及画矩形（`draw_square`）与抓取放置（`pick_place`）两个官方 demo，让机械臂在复杂环境中自动规划安全运动。
 
+> 分工标记：🤖 AI 执行（终端可自动化）｜ 👤 用户执行（GUI/网页/按键/插线/物理操作）｜ 🔀 人机协作（sudo 需用户密码或需用户确认）
+
 ## 何时使用
 
 - 用户想让机械臂"自动规划避障轨迹 / 画图形 / 做 pick-and-place"
@@ -21,14 +23,14 @@ MoveIt 2 是 ROS2 生态中最主流的机械臂运动规划框架，负责**逆
 - 已构建 `rebotarm_ros2` 工作空间（含 `rebotarm_bringup`、`rebotarm_moveit_config`、`rebotarm_moveit_demos` 等包），见 `rebot-arm-ros2`
 - 真机操作前已读 `rebot-arm-safety` 并完成检查清单
 
-## 0. 安全要点
+## 🔀 0. 安全要点
 
 > ⚠️ MoveIt 会**自主规划并执行轨迹**，机械臂可能沿非预期的路径运动。**先仿真验证、再真机执行**；真机执行前确认工作区无障碍物与人员；轨迹执行中出现异常（抖动、撞限位、异响）第一步是 `/rebotarm/disable` 或直接断电（详见 `rebot-arm-safety`）。
 
 - 真机运行前先确认夹爪开闭方向和限位（见 9.2 的夹爪参数）。
 - 首次运行 demo 必须有人值守，手在电源开关旁，先低速空载试跑。
 
-## 1. 系统架构
+## 🤖 1. 系统架构
 
 MoveIt 2 的核心是 `move_group` 节点，它充当运动规划的总调度器。围绕 `move_group`，reBot Arm 的 MoveIt 2 集成涉及以下组件：
 
@@ -43,9 +45,9 @@ MoveIt 2 的核心是 `move_group` 节点，它充当运动规划的总调度器
 | Planning Scene | 环境模型：物体、碰撞、ACM | `pick_place.py` 中的场景操作 |
 | RViz MotionPlanning | 可视化交互界面 | `moveit.rviz` |
 
-## 2. 启动链路
+## 🔀 2. 启动链路
 
-### 2.1 仿真环境（不需要真实机械臂）
+### 🤖 2.1 仿真环境（不需要真实机械臂）
 
 ```bash
 ros2 launch rebotarm_moveit_config demo.launch.py
@@ -53,9 +55,9 @@ ros2 launch rebotarm_moveit_config demo.launch.py
 
 该命令启动 `move_group`、`robot_state_publisher`、`ros2_control_node`（mock 硬件）、`joint_state_broadcaster`、`rebotarm_controller`、`gripper_controller` 和 RViz。仿真环境使用 `mock_components/GenericSystem` 作为虚拟硬件。**先启动 MoveIt 仿真，再另开终端运行 demo**（见第 9 节）。
 
-### 2.2 真机环境（两个终端）
+### 🔀 2.2 真机环境（两个终端）
 
-**终端 1：启动硬件驱动**
+**终端 1：启动硬件驱动** 🔀
 
 ```bash
 # RS：先配置 can0（bitrate 1000000），再启动驱动
@@ -73,7 +75,7 @@ ros2 launch rebotarm_bringup bringup.launch.py model:=dm channel:=/dev/ttyACM0
 ./rebotarm start dm
 ```
 
-**终端 2：启动 MoveIt（连接到已运行的驱动）**
+**终端 2：启动 MoveIt（连接到已运行的驱动）** 🤖
 
 ```bash
 ros2 launch rebotarm_moveit_config hardware.launch.py
@@ -81,7 +83,7 @@ ros2 launch rebotarm_moveit_config hardware.launch.py
 
 `hardware.launch.py` 不启动 `ros2_control_node`，而是通过 remap 将 `/joint_states` 指向 `/<arm_namespace>/joint_states`，直接读取真实驱动发布的关节状态，并将规划好的轨迹通过 `follow_joint_trajectory` action 下发给 `reBotArmController`。
 
-## 3. SRDF 与 Planning Group
+## 🤖 3. SRDF 与 Planning Group
 
 SRDF（Semantic Robot Description Format）是 URDF 的语义补充层：URDF 描述物理结构（连杆、关节、mesh），但不知道哪些关节"一起动"、哪个连杆是"末端"、哪些连杆"不会碰"，SRDF 回答这些问题。
 
@@ -113,7 +115,7 @@ reBot Arm 的 SRDF 定义了两个规划组：
 
 `end_effector`：夹爪安装在最末连杆 `gripper_link` 上，规划组 `gripper`，从属于父规划组 `arm`；`virtual_joint` 将机械臂固定到世界坐标系 `world`。
 
-## 4. 关节限制与碰撞模型
+## 🤖 4. 关节限制与碰撞模型
 
 **关节限制分两层**：
 
@@ -151,7 +153,7 @@ default_acceleration_scaling_factor: 0.2
 
 未出现在 ACM 中的连杆对（如 `base_link` 和 `link6`）会被正常检测碰撞，OMPL 会在采样空间中避开导致碰撞的关节配置。
 
-## 5. Planning Scene
+## 🤖 5. Planning Scene
 
 Planning Scene 是 MoveIt 对"世界"的建模，包含机器人本体、环境物体和碰撞关系。它是规划的前提：每次规划前，MoveIt 都会检查起始状态是否与场景中的物体碰撞。核心操作通过三个 service 完成：
 
@@ -168,7 +170,7 @@ Planning Scene 是 MoveIt 对"世界"的建模，包含机器人本体、环境�
 3. **附加物体**：将物体"粘"到末端连杆上，随机械臂一起运动（`AttachedCollisionObject`）；
 4. **分离物体**：到达放置位后从末端分离，重新作为场景物体（`operation=CollisionObject.REMOVE` + 重新 `ADD`）。
 
-## 6. 笛卡尔路径
+## 🤖 6. 笛卡尔路径
 
 笛卡尔路径是指末端在笛卡尔空间中沿直线或曲线运动，而不是在关节空间中逐点插值。MoveIt 2 通过 `compute_cartesian_path` 实现。reBot Arm 的 `draw_square` demo 使用笛卡尔路径思路：控制 `gripper_tcp` 遍历同一平面矩形的四个角点：
 
@@ -189,7 +191,7 @@ Planning Scene 是 MoveIt 对"世界"的建模，包含机器人本体、环境�
 
 > 💡 `tcp_yaw_offsets` 是实用技巧：IK 可能返回多个解，其中某些解会导致 `joint6` 大幅旋转。通过提供多个备选 yaw，demo 会**选择关节变化最小的解**，减少不必要的绕转。
 
-## 7. 障碍物规划
+## 🤖 7. 障碍物规划
 
 当 Planning Scene 中存在障碍物时，OMPL 会在规划过程中自动避开它们。reBot Arm 的 OMPL 配置要点（`ompl_planning.yaml`）：
 
@@ -203,7 +205,7 @@ Planning Scene 是 MoveIt 对"世界"的建模，包含机器人本体、环境�
 
 `pick_place` 完整展示了障碍物规划流程：**添加物体 → 规划到抓取位（避碰）→ 附加物体 → 规划到放置位（物体随臂运动，仍需避碰）→ 分离物体 → 清理场景**。
 
-## 8. 轨迹执行
+## 🤖 8. 轨迹执行
 
 MoveIt 2 规划出的轨迹通过 controller 下发给硬件执行，仿真与真机使用不同配置。
 
@@ -235,9 +237,9 @@ trajectory_execution:
 
 真机执行流程：① `move_group` 规划出 `RobotTrajectory` → ② 通过 `/execute_trajectory` action 发给 `MoveItSimpleControllerManager` → ③ 转换为 `follow_joint_trajectory` goal 发给 `reBotArmController` 的 `/rebotarm/follow_joint_trajectory` → ④ `reBotArmController` 内部执行轨迹（校验 → pos_vel 模式 → 定时下发 → 到位检查）→ ⑤ 执行结果回传 `move_group`。执行失败（超时、到位偏差过大）时 `move_group` 返回错误码，demo 脚本据此决定是否中止。
 
-## 9. 运行 Demo
+## 🔀 9. 运行 Demo
 
-### 9.1 画矩形 demo（draw_square）
+### 🤖 9.1 画矩形 demo（draw_square）
 
 先启动 MoveIt 仿真环境（第 2.1 节），再另开终端运行：
 
@@ -248,7 +250,7 @@ ros2 launch rebotarm_moveit_demos draw_square.launch.py
 
 `draw_square` 控制 `gripper_tcp` 遍历矩形的四个角点，验证 IK、轨迹规划和执行链路是否正常。默认参数在 `src/rebotarm_moveit_demos/config/draw_square.yaml`（见第 6 节参数表）。
 
-### 9.2 抓取放置 demo（pick_place）
+### 🔀 9.2 抓取放置 demo（pick_place）
 
 ```bash
 source install/setup.bash
@@ -265,6 +267,14 @@ ros2 launch rebotarm_moveit_demos pick_place.launch.py
 | 夹爪全闭 | `0.0`（单侧 rad） | `0.0`（电机位置） |
 
 > 🔴 **真机上夹爪方向反了**：检查 `pick_place.yaml` 中的 `hardware_open_gripper_position` 与 `hardware_closed_gripper_position`。B601-DM 默认开 `-5.0`、闭 `0.0`；如果电机方向相反，**交换这两个值**。
+
+## ✅ 验证与预期结果
+
+| 运行 | 期望结果 | 失败处理 |
+|------|----------|----------|
+| 仿真启动 `demo.launch.py`（第 2.1 节） | RViz 打开并显示机械臂模型（含 `gripper_tcp`），MotionPlanning 插件可用 | 模型/插件不显示：确认 `demo.launch.py` 已启动、RViz 加载了 `moveit.rviz`；手动打开 RViz 需手动添加 MotionPlanning 显示 |
+| `draw_square.launch.py`（第 9.1 节） | `gripper_tcp` 遍历矩形四角，RViz 显示规划轨迹并执行完成，无规划失败报错 | 规划失败：按 FAQ 检查起始限位/碰撞/工作空间（`ik_timeout`、`planning_time` 默认 5s 可增大）；`joint6` 绕转：调 `tcp_yaw_offsets` |
+| `pick_place.launch.py`（第 9.2 节，真机前确认夹爪方向） | 添加物体 → 夹爪打开 → 抓取位 → 闭合 → 附加物体 → 放置位 → 释放，流程走通 | 仿真正常真机失败：检查 `/joint_states` remap、`reBotArmController` 已启动且使能、首点偏差 < `0.10 rad`、到位偏差 < `0.03 rad`；夹爪反向：交换 `hardware_open/closed_gripper_position` |
 
 ## 10. 常见问题（FAQ）
 
@@ -292,5 +302,5 @@ IK 可能返回多个解，导致 `joint6` 大幅绕转。`draw_square` 通过 `
 
 - 官方 Wiki：<https://wiki.seeedstudio.com/rebot_b601_dm_getting_started/> ｜ <https://wiki.seeedstudio.com/rebot_b601_rs_getting_started/>
 - 官方仓库：<https://github.com/Seeed-Projects/reBot-DevArm>
-- 配套教程：本仓库同目录《Seeed具身智能入门8个阶段40章节》第 33 章（ROS2 集成）、第 34 章（MoveIt2 运动规划）
+- 配套教程：本地参考教程《Seeed具身智能入门8个阶段40章节》（未随本仓库发布）第 33 章（ROS2 集成）、第 34 章（MoveIt2 运动规划）
 - 相关技能：`rebot-arm-ros2`（ROS2 工作空间与 Action 接口）｜ `rebot-arm-safety`（真机操作前置必读）｜ `rebot-arm-troubleshooting`（故障排查）
