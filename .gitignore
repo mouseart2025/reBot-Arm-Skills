@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# 本地配套教程（体积大，仅作本地参考，不提交到 GitHub）
+《Seeed具身智能入门8个阶段40章节：手把手教你造一台会学习的机械臂》/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+
+# 其他
+*.log
